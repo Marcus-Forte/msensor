@@ -1,8 +1,10 @@
 #pragma once
 
 #include "interface/IAdc.hh"
+#include "interface/ICamera.hh"
 #include "interface/IImu.hh"
 #include "interface/ILidar.hh"
+
 #include "sensors.grpc.pb.h"
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -37,16 +39,17 @@ public:
   /**
    * @brief Return the most recent ADC reading.
    */
-  ::grpc::Status GetAdc(::grpc::ServerContext *context,
+  ::grpc::Status getAdc(::grpc::ServerContext *context,
                         const ::sensors::AdcDataRequest *request,
                         ::sensors::AdcData *response) override;
 
   /**
-   * @brief Saves the oldest scan in the queue to a PLY file.
+   * @brief Stream camera frames to the requesting client.
    */
-  ::grpc::Status savePLYScan(::grpc::ServerContext *context,
-                             const ::sensors::saveFileRequest *request,
-                             ::google::protobuf::Empty *response) override;
+  ::grpc::Status getCamera(
+      ::grpc::ServerContext *context,
+      const ::sensors::CameraStreamRequest *request,
+      ::grpc::ServerWriter<::sensors::CameraStreamReply> *writer) override;
 
   /**
    * @brief Puts a scan data in the server queue.
@@ -68,6 +71,13 @@ public:
    */
   void putAdcData(msensor::AdcSample adc_data);
 
+  /**
+   * @brief Puts (caches one sample) ADC data into the server.
+   *
+   * @param adc_data
+   */
+  void putImage(const cv::Mat &image);
+
 private:
   template <typename T>
   using QueuePtrT = boost::lockfree::spsc_queue<std::shared_ptr<T>>;
@@ -75,6 +85,7 @@ private:
 
   std::shared_ptr<QueuePtrT<msensor::Scan3DI>> scan_queue_;
   std::shared_ptr<QueueT<msensor::IMUData>> imu_queue_;
+  std::shared_ptr<QueueT<cv::Mat>> camera_queue_;
 
   msensor::AdcSample adc_data_;
 };

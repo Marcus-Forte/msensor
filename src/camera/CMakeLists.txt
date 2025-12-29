@@ -1,4 +1,4 @@
-add_library(Camera
+add_library(opencv_camera
 opencv_camera.cc)
 
-target_link_libraries(Camera ICamera)
+target_link_libraries(opencv_camera ICamera)

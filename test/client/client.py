@@ -2,6 +2,7 @@ import argparse
 import threading
 from typing import Optional, Sequence
 
+import cv2
 import grpc
 import numpy as np
 import viser
@@ -139,6 +140,49 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
         print(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
 
 
+def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+    request = sensors_pb2.CameraStreamRequest()
+    frame_count = 0
+
+    try:
+        for camera_data in stub.getCamera(request):
+            if stop_event.is_set():
+                break
+            
+            frame_count += 1
+            print(f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding}")
+            
+            # Decode the image data
+            if camera_data.encoding == sensors_pb2.BGR8:
+                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                img = img_array.reshape((camera_data.height, camera_data.width, 3))
+                # Convert BGR to RGB for viser display
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            elif camera_data.encoding == sensors_pb2.GRAY8:
+                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                img = img_array.reshape((camera_data.height, camera_data.width))
+                # Convert grayscale to RGB for viser display
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            elif camera_data.encoding == sensors_pb2.RGB8:
+                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                img_rgb = img_array.reshape((camera_data.height, camera_data.width, 3))
+            else:
+                print(f"Unsupported encoding: {camera_data.encoding}")
+                continue
+            
+            # Display the image in viser. TODO PLACE IT CORRECLTY
+            server.scene.add_image(
+                name="/camera_frame",
+                image=img_rgb,
+                render_width=1.0,
+                render_height=float(camera_data.height) / float(camera_data.width),
+                position=(0, 0, 2),
+            )
+            
+    except grpc.RpcError as exc:
+        print(f"Camera stream error: {exc.code().name} - {exc.details()}")
+
+
 def stream_adc(
     stub: sensors_pb2_grpc.SensorServiceStub,
     stop_event: threading.Event,
@@ -151,7 +195,7 @@ def stream_adc(
     print(f"Polling ADC channel {channel} every {period_sec}s. Press Ctrl+C to stop.")
     while not stop_event.is_set():
         try:
-            resp = stub.GetAdc(request)
+            resp = stub.getAdc(request)
             print(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
             battery_level_handle.value = resp.sample
         except grpc.RpcError as exc:
@@ -168,6 +212,7 @@ def parse_args():
     )
     parser.add_argument("--imu", action="store_true", help="Subscribe to the IMU stream")
     parser.add_argument("--lidar", action="store_true", help="Subscribe to the LiDAR stream")
+    parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
     parser.add_argument("--adc", action="store_true", help="Poll the ADC")
     parser.add_argument("--adc-channel", type=int, default=DEFAULT_ADC_CHANNEL, help="ADC channel to poll")
     parser.add_argument(
@@ -182,8 +227,8 @@ def parse_args():
 def main():
     args = parse_args()
 
-    if not any([args.imu, args.lidar, args.adc]):
-        args.imu = args.lidar = args.adc = True
+    if not any([args.imu, args.lidar, args.camera, args.adc]):
+        args.imu = args.lidar = args.camera = args.adc = True
 
     server = viser.ViserServer()
     server.scene.world_axes.visible = True
@@ -213,6 +258,13 @@ def main():
             if server is None:
                 raise RuntimeError("LiDAR visualization requires viser to be available.")
             t = threading.Thread(target=stream_lidar, args=(stub, server, stop_event), name="lidar-thread")
+            t.start()
+            threads.append(t)
+
+        if args.camera:
+            if server is None:
+                raise RuntimeError("Camera visualization requires viser to be available.")
+            t = threading.Thread(target=stream_camera, args=(stub, server, stop_event), name="camera-thread")
             t.start()
             threads.append(t)
 

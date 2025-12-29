@@ -21,10 +21,15 @@ void SensorsServer::stop() { server_->Shutdown(); }
 void SensorsServer::publishScan(const std::shared_ptr<msensor::Scan3DI> &scan) {
   scan_service_.putScan(scan);
 }
+
 void SensorsServer::publishImu(msensor::IMUData imu_data) {
   scan_service_.putImuData(imu_data);
 }
 
 void SensorsServer::publishAdc(msensor::AdcSample adc_data) {
   scan_service_.putAdcData(adc_data);
+}
+
+void SensorsServer::publishCameraFrame(const cv::Mat &image) {
+  scan_service_.putImage(image);
 }

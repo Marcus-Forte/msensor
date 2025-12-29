@@ -3,3 +3,5 @@
 - separate thread for sensor recording?
 - Support more subscribers at once
 - Logging
+- Optimize camera wire transmission (encoding)
+- Abstract the server queues

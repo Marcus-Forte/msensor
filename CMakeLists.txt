@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(msensor_library)
+project(msensor)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -49,6 +49,9 @@ target_link_libraries(sim_publisher ${PROJECT_NAME} sim_lidar sim_imu)
 
 add_executable(ads1115_publisher src/ads1115_publisher.cc)
 target_link_libraries(ads1115_publisher ads1115 ${PROJECT_NAME})
+
+add_executable(camera_publisher src/camera_publisher.cc)
+target_link_libraries(camera_publisher opencv_camera ${PROJECT_NAME})
 
 add_executable(all_publisher src/all_publisher.cc)
 target_link_libraries(all_publisher ads1115 RPLidar icm-20948 ${PROJECT_NAME})

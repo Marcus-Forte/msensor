@@ -109,7 +109,7 @@ ScanService::getImu(::grpc::ServerContext *context,
   return ::grpc::Status::OK;
 }
 
-::grpc::Status ScanService::GetAdc(::grpc::ServerContext *context,
+::grpc::Status ScanService::getAdc(::grpc::ServerContext *context,
                                    const ::sensors::AdcDataRequest *request,
                                    ::sensors::AdcData *response) {
 
@@ -118,31 +118,64 @@ ScanService::getImu(::grpc::ServerContext *context,
   return ::grpc::Status::OK;
 }
 
-::grpc::Status
-ScanService::savePLYScan(::grpc::ServerContext *context,
-                         const ::sensors::saveFileRequest *request,
-                         ::google::protobuf::Empty *response) {
+::grpc::Status ScanService::getCamera(
+    ::grpc::ServerContext *context,
+    const ::sensors::CameraStreamRequest *request,
+    ::grpc::ServerWriter<::sensors::CameraStreamReply> *writer) {
+  static bool s_client_connected = false;
+  if (s_client_connected)
+    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
+                        "Only one client stream supported");
 
-  /// \todo check if stream is active. Save in PBscan or PCL?
-  if (!scan_queue_) {
-    ::grpc::Status(grpc::StatusCode::INTERNAL, "No active stream");
-  }
-  auto scan = scan_queue_->front();
-  std::string filename;
-  if (request->has_filename()) {
-    filename = std::format("{}.ply", request->filename());
-  } else {
-    filename = std::format("scan_{}.ply", timing::getNowUs());
+  std::cout << "Start camera stream." << std::endl;
+
+  s_client_connected = true;
+
+  /// \todo make queue size configurable
+  camera_queue_ = std::make_shared<QueueT<cv::Mat>>(10);
+
+  while (!context->IsCancelled()) {
+    while (!camera_queue_->empty()) {
+      const auto &frame = camera_queue_->front();
+
+      sensors::CameraStreamReply reply;
+      reply.set_width(frame.cols);
+      reply.set_height(frame.rows);
+
+      // Set encoding based on OpenCV Mat type
+      if (frame.channels() == 3) {
+        reply.set_encoding(sensors::CameraEncoding::BGR8);
+      } else if (frame.channels() == 1) {
+        reply.set_encoding(sensors::CameraEncoding::GRAY8);
+      } else {
+        reply.set_encoding(sensors::CameraEncoding::UNKNOWN);
+      }
+
+      // Set timestamp
+      reply.set_timestamp(timing::getNowUs());
+
+      // Encode image data
+      if (frame.isContinuous()) {
+        reply.set_image_data(frame.data, frame.total() * frame.elemSize());
+      } else {
+        // Handle non-continuous Mat by copying to continuous buffer
+        cv::Mat continuous = frame.clone();
+        reply.set_image_data(continuous.data,
+                             continuous.total() * continuous.elemSize());
+      }
+
+      std::cout << "Sent: " << reply.image_data().size() << " bytes"
+                << " Width: " << reply.width() << " Height: " << reply.height()
+                << " Encoding: " << reply.encoding() << std::endl;
+
+      writer->Write(reply);
+      camera_queue_->pop();
+    }
   }
 
-  if (pcl::io::savePLYFileBinary<pcl::PointXYZI>(filename, *scan->points) ==
-      0) {
-    std::cout << "Saved scan to:" << filename << std::endl;
-    return ::grpc::Status::OK;
-  }
-
-  return ::grpc::Status(grpc::StatusCode::INTERNAL,
-                        "Error saving scan to PLY file, no points");
+  std::cout << "Ending camera stream." << std::endl;
+  s_client_connected = false;
+  return ::grpc::Status::OK;
 }
 
 void ScanService::putScan(const std::shared_ptr<msensor::Scan3DI> &scan) {
@@ -179,4 +212,20 @@ void ScanService::putImuData(msensor::IMUData imu_data) {
 
 void ScanService::putAdcData(msensor::AdcSample adc_data) {
   adc_data_ = adc_data;
+}
+
+void ScanService::putImage(const cv::Mat &image) {
+
+  if (!camera_queue_) {
+    return;
+  }
+
+  if (camera_queue_->write_available() == 0) {
+    camera_queue_->pop();
+  }
+  const auto res = camera_queue_->push(image);
+
+  if (res == false) {
+    std::cerr << "Camera queue is full. Dropping image." << std::endl;
+  }
 }
