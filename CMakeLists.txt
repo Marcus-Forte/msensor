@@ -4,6 +4,7 @@ project(msensor_library)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(PCL 1.15.1 REQUIRED COMPONENTS common io) # for point types, point cloud serialization
+find_package(OpenCV 4.10 REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(findGRPC)
@@ -11,6 +12,7 @@ include(generate_proto)
 
 add_subdirectory(include)
 add_subdirectory(third_party)
+
 option (FORMAT_CODE "Format code" OFF)
 option (IMPORT_ALL_RUNTIME "Import all runtime libraries, including system libraries like libc" OFF)
 if(FORMAT_CODE)
@@ -24,6 +26,7 @@ add_subdirectory(src/lidar)
 add_subdirectory(src/imu)
 add_subdirectory(src/recorder)
 add_subdirectory(src/adc)
+add_subdirectory(src/camera)
 
 add_subdirectory(proto)
 add_subdirectory(grpc)
