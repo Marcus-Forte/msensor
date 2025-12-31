@@ -164,7 +164,7 @@ ScanService::getImu(::grpc::ServerContext *context,
       }
 
       reply.set_encoding(sensors::CameraEncoding::MJPEG);
-      reply.set_allocated_image_data(jpeg_buffer.data())
+      reply.set_image_data(jpeg_buffer.data(), jpeg_buffer.size());
 
 
       std::cout << "Sent: " << reply.image_data().size() << " bytes"

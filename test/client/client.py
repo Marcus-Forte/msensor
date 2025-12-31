@@ -166,6 +166,15 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
             elif camera_data.encoding == sensors_pb2.RGB8:
                 img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                 img_rgb = img_array.reshape((camera_data.height, camera_data.width, 3))
+            elif camera_data.encoding == sensors_pb2.MJPEG:
+                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                if img is None:
+                    print("Failed to decode MJPEG frame")
+                    continue
+                # Convert decoded BGR frame to RGB for viser display
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            
             else:
                 print(f"Unsupported encoding: {camera_data.encoding}")
                 continue
