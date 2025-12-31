@@ -2,6 +2,8 @@
 #include <opencv2/imgcodecs.hpp>
 #include <thread>
 
+#include <opencv2/core/utils/logger.hpp>
+
 #include "camera/opencv_camera.hh"
 #include "sensors_server.hh"
 #include "timing/timing.hh"
@@ -18,7 +20,13 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  OpenCvCamera camera(std::stoi(argv[1]));
+  // add opencv logs
+  cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_DEBUG);
+
+
+  const std::string pipeline(argv[1]);
+
+  OpenCvCamera camera(pipeline);
 
   if (!camera.isOpened()) {
     std::cerr << "Error: Could not open camera." << std::endl;
@@ -34,7 +42,7 @@ int main(int argc, char **argv) {
     const auto now = timing::getNowUs();
 
     if (camera.read(frame)) {
-
+      std::cout << "Captured frame at " << now << " us" << std::endl;
       server.publishCameraFrame(frame);
     }
 
