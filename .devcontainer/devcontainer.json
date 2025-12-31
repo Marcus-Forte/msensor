@@ -26,5 +26,10 @@
 
 	"mounts": [
 		"source=msensor-app-cache,target=${containerWorkspaceFolder}/build,type=volume"
+	],
+	"runArgs": [
+		"--privileged",
+		"-v","/dev:/dev",
+		"-v","/run/udev:/run/udev:ro"
 	]
 }

@@ -7,10 +7,6 @@
 - Abstract the server queues
 
 
-camera_publisher "libcamerasrc ! video/x-raw,format=RGB,width=1536,height=864,framerate=30/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
-
-camera_publisher "libcamerasrc ! video/x-raw,format=RGB,width=2304,height=1296,framerate=30/1 ! videoconvert ! appsink"
-
-2304x1296
+camera_publisher "libcamerasrc ! video/x-raw,format=BGR,width=1536,height=864,framerate=30/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
 
 # Use `docker run -v /dev:/dev -v /run/udev:/run/udev --privileged` to allow device access

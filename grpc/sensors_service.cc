@@ -1,5 +1,6 @@
 #include "sensors_service.hh"
 #include "timing/timing.hh"
+#include <opencv2/imgcodecs.hpp>
 #include <pcl/io/ply_io.h>
 
 constexpr uint32_t DEFAULT_QUEUE_SIZE = 100;
@@ -154,15 +155,17 @@ ScanService::getImu(::grpc::ServerContext *context,
       // Set timestamp
       reply.set_timestamp(timing::getNowUs());
 
-      // Encode image data
-      if (frame.isContinuous()) {
-        reply.set_image_data(frame.data, frame.total() * frame.elemSize());
-      } else {
-        // Handle non-continuous Mat by copying to continuous buffer
-        cv::Mat continuous = frame.clone();
-        reply.set_image_data(continuous.data,
-                             continuous.total() * continuous.elemSize());
+      std::vector<uchar> jpeg_buffer;
+      const std::vector<int> jpeg_params = {cv::IMWRITE_JPEG_QUALITY, 85};
+      if (!cv::imencode(".jpg", frame, jpeg_buffer, jpeg_params)) {
+        std::cerr << "Failed to encode frame as JPEG." << std::endl;
+        camera_queue_->pop();
+        continue;
       }
+
+      reply.set_encoding(sensors::CameraEncoding::MJPEG);
+      reply.set_allocated_image_data(jpeg_buffer.data())
+
 
       std::cout << "Sent: " << reply.image_data().size() << " bytes"
                 << " Width: " << reply.width() << " Height: " << reply.height()
