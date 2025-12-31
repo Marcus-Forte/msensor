@@ -60,17 +60,10 @@ include(GNUInstallDirs)
 install(TARGETS all_publisher rplidar_publisher mid360_publisher sim_publisher icm20948_publisher ads1115_publisher camera_publisher
 DESTINATION ${CMAKE_INSTALL_BINDIR} RUNTIME_DEPENDENCY_SET runtime_targets)
 
-# Experimental - install (all, including system libraries) runtime dependencies together for a standalone container.
-# TODO Is there a better way?
-if(IMPORT_ALL_RUNTIME)
-  install(RUNTIME_DEPENDENCY_SET runtime_targets
-  DESTINATION ${CMAKE_INSTALL_LIBDIR})
-else()
-# It is also possible to install only some of the libraries - given the system contains the others.
-# The container must be based on the same distro
-  install(RUNTIME_DEPENDENCY_SET runtime_targets PRE_EXCLUDE_REGEXES "." PRE_INCLUDE_REGEXES "pcl|boost|i2c|omp|png"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
+# Import runtime dependencies, exclude system libraries
+set(RUNTIME_DEPENDENCY_POST_EXCLUDE_REGEX "libgst|libm|gcc_s|libc|ld-linux")
+install(RUNTIME_DEPENDENCY_SET runtime_targets POST_EXCLUDE_REGEXES ${RUNTIME_DEPENDENCY_POST_EXCLUDE_REGEX} PRE_INCLUDE_REGEXES "."
+DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cfg/mid360_config.json
 DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})

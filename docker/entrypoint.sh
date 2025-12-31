@@ -10,6 +10,7 @@ Available apps (run as CMD/args):
   sim_publisher
   icm20948_publisher
   ads1115_publisher
+  camera_publisher
   all_publisher
 
 Example:
