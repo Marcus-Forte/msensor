@@ -167,9 +167,9 @@ ScanService::getImu(::grpc::ServerContext *context,
       reply.set_image_data(jpeg_buffer.data(), jpeg_buffer.size());
 
 
-      std::cout << "Sent: " << reply.image_data().size() << " bytes"
-                << " Width: " << reply.width() << " Height: " << reply.height()
-                << " Encoding: " << reply.encoding() << std::endl;
+      // std::cout << "Sent: " << reply.image_data().size() << " bytes"
+      //           << " Width: " << reply.width() << " Height: " << reply.height()
+      //           << " Encoding: " << reply.encoding() << std::endl;
 
       writer->Write(reply);
       camera_queue_->pop();

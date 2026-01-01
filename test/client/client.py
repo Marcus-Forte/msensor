@@ -143,6 +143,7 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
 def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
     request = sensors_pb2.CameraStreamRequest()
     frame_count = 0
+    gui_image_handle: Optional[viser.GuiImageHandle] = None
 
     try:
         for camera_data in stub.getCamera(request):
@@ -179,14 +180,18 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
                 print(f"Unsupported encoding: {camera_data.encoding}")
                 continue
             
-            # Display the image in viser. TODO PLACE IT CORRECLTY
-            server.scene.add_image(
-                name="/camera_frame",
-                image=img_rgb,
-                render_width=1.0,
-                render_height=float(camera_data.height) / float(camera_data.width),
-                position=(0, 0, 2),
-            )
+            # Flip image to correct camera orientation (vertical + horizontal).
+            img_rgb = np.flip(img_rgb, axis=(0, 1)).copy()
+
+            # Display the current frame in the GUI rather than attaching it to the 3D scene.
+            if gui_image_handle is None:
+                gui_image_handle = server.gui.add_image(
+                    img_rgb,
+                    label="Camera",
+                    format="jpeg",
+                )
+            else:
+                gui_image_handle.image = img_rgb
             
     except grpc.RpcError as exc:
         print(f"Camera stream error: {exc.code().name} - {exc.details()}")

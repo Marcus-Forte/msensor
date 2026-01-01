@@ -1,17 +1,23 @@
 #include "adc/ADS1115.hh"
+#include "camera/opencv_camera.hh"
 #include "imu/icm-20948.h"
 #include "imu/icm-20948_defs.h"
 #include "lidar/RPLidar.hh"
 #include "sensors_server.hh"
 #include "timing/timing.hh"
+
 #include <filesystem>
 #include <iostream>
 #include <thread>
 
-constexpr int kDefaultI2cBus = 1;
-constexpr uint8_t kDefaultADSAddress = 0x48;
-constexpr const char *kDefaultLidarDevice = "/dev/ttyUSB0";
-constexpr uint64_t kLoopPeriodUs = 1000;
+constexpr int DefaultI2cBus = 1;
+constexpr uint8_t DefaultADSAddress = 0x48;
+constexpr const char *DefaultLidarDevice = "/dev/ttyUSB0";
+constexpr uint64_t LoopPeriodUs = 1000;
+constexpr const char *DefaultStreamPipeline =
+    "libcamerasrc ! "
+    "video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! "
+    "videoconvert ! appsink max-buffers=1 drop=true sync=false";
 
 static void print_usage() {
   std::cout
@@ -22,8 +28,8 @@ static void print_usage() {
 int main(int argc, char **argv) {
 
   int opt;
-  int bus = kDefaultI2cBus;
-  std::filesystem::path lidar_device(kDefaultLidarDevice);
+  int bus = DefaultI2cBus;
+  std::filesystem::path lidar_device(DefaultLidarDevice);
 
   while ((opt = getopt(argc, argv, "b:l:h")) != -1) {
     switch (opt) {
@@ -46,21 +52,25 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  msensor::ADS1115 ads1115(bus, kDefaultADSAddress);
+  msensor::ADS1115 ads1115(bus, DefaultADSAddress);
   ads1115.init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
                msensor::ADS1115::DataRate::SPS_8,
                static_cast<msensor::ADS1115::Channel>(0));
 
   msensor::RPLidar rplidar(lidar_device);
-  rplidar.setMotorRPM(360);
   rplidar.init();
+  rplidar.setMotorRPM(360);
 
   msensor::ICM20948 icm20948(bus, ICM20948_ADDR0);
   icm20948.init();
   icm20948.calibrate();
 
+  msensor::OpenCvCamera camera(DefaultStreamPipeline);
+
   SensorsServer server;
   server.start();
+
+  cv::Mat frame;
 
   while (true) {
     const auto now = timing::getNowUs();
@@ -75,8 +85,8 @@ int main(int argc, char **argv) {
 
     if (scan) {
       server.publishScan(scan);
-      std::cout << "New Scan @ " << scan->timestamp
-                << " Points: " << scan->points->size() << std::endl;
+      // std::cout << "New Scan @ " << scan->timestamp
+      //           << " Points: " << scan->points->size() << std::endl;
     }
     if (imudata) {
       server.publishImu(imudata.value());
@@ -85,7 +95,11 @@ int main(int argc, char **argv) {
       server.publishAdc(adc_data.value());
     }
 
-    const uint64_t remaining_us = kLoopPeriodUs - (timing::getNowUs() - now);
+    if (camera.isOpened() && camera.read(frame)) {
+      server.publishCameraFrame(frame);
+    }
+
+    const uint64_t remaining_us = LoopPeriodUs - (timing::getNowUs() - now);
     if (remaining_us > 0) {
       std::this_thread::sleep_for(std::chrono::microseconds(remaining_us));
     } else {

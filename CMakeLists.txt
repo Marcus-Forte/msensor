@@ -54,7 +54,7 @@ add_executable(camera_publisher src/camera_publisher.cc)
 target_link_libraries(camera_publisher opencv_camera ${PROJECT_NAME})
 
 add_executable(all_publisher src/all_publisher.cc)
-target_link_libraries(all_publisher ads1115 RPLidar icm-20948 ${PROJECT_NAME})
+target_link_libraries(all_publisher ads1115 RPLidar icm-20948 ${PROJECT_NAME} opencv_camera)
 
 include(GNUInstallDirs)
 install(TARGETS all_publisher rplidar_publisher mid360_publisher sim_publisher icm20948_publisher ads1115_publisher camera_publisher
