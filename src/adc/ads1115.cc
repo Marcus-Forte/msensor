@@ -93,7 +93,8 @@ ADS1115::ADS1115(int i2c_device, uint8_t i2c_ads_address)
 
 std::optional<AdcSample> ADS1115::readSingleEnded() const {
   const auto raw = readConversion();
-  return AdcSample{convertRawToVoltage(raw), timing::getNowUs()};
+  return AdcSample{convertRawToVoltage(raw) * external_gain_,
+                   timing::getNowUs()};
 }
 
 bool ADS1115::init(Gain gain, DataRate rate, Channel channel,
@@ -140,4 +141,4 @@ inline int16_t ADS1115::read_(uint8_t reg_address) const {
   return beToHost(static_cast<uint16_t>(raw));
 }
 
-} //
+} // namespace msensor
