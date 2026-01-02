@@ -3,7 +3,10 @@
 
 #include "sensors_server.hh"
 
-SensorsServer::SensorsServer() = default;
+SensorsServer::SensorsServer(std::shared_ptr<IAdc> adc, std::shared_ptr<ICamera> camera,
+                               std::shared_ptr<IImu> imu,
+                               std::shared_ptr<ILidar> lidar)
+    : scan_service_(adc, camera, imu, lidar) {}
 
 void SensorsServer::start() {
 
@@ -17,19 +20,3 @@ void SensorsServer::start() {
 }
 
 void SensorsServer::stop() { server_->Shutdown(); }
-
-void SensorsServer::publishScan(const std::shared_ptr<msensor::Scan3DI> &scan) {
-  scan_service_.putScan(scan);
-}
-
-void SensorsServer::publishImu(msensor::IMUData imu_data) {
-  scan_service_.putImuData(imu_data);
-}
-
-void SensorsServer::publishAdc(msensor::AdcSample adc_data) {
-  scan_service_.putAdcData(adc_data);
-}
-
-void SensorsServer::publishCameraFrame(const cv::Mat &image) {
-  scan_service_.putImage(image);
-}

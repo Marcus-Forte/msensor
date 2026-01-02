@@ -44,15 +44,15 @@ class SensorServiceStub(object):
                 request_serializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.IMUData.FromString,
                 _registered_method=True)
-        self.getAdc = channel.unary_unary(
-                '/sensors.SensorService/getAdc',
-                request_serializer=proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
-                response_deserializer=proto__gen_dot_sensors__pb2.AdcData.FromString,
-                _registered_method=True)
         self.getCamera = channel.unary_stream(
                 '/sensors.SensorService/getCamera',
                 request_serializer=proto__gen_dot_sensors__pb2.CameraStreamRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.CameraStreamReply.FromString,
+                _registered_method=True)
+        self.getAdc = channel.unary_unary(
+                '/sensors.SensorService/getAdc',
+                request_serializer=proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
+                response_deserializer=proto__gen_dot_sensors__pb2.AdcData.FromString,
                 _registered_method=True)
 
 
@@ -60,7 +60,8 @@ class SensorServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def getScan(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Sensor Streams
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -71,13 +72,13 @@ class SensorServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getAdc(self, request, context):
+    def getCamera(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getCamera(self, request, context):
+    def getAdc(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -96,15 +97,15 @@ def add_SensorServiceServicer_to_server(servicer, server):
                     request_deserializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.IMUData.SerializeToString,
             ),
-            'getAdc': grpc.unary_unary_rpc_method_handler(
-                    servicer.getAdc,
-                    request_deserializer=proto__gen_dot_sensors__pb2.AdcDataRequest.FromString,
-                    response_serializer=proto__gen_dot_sensors__pb2.AdcData.SerializeToString,
-            ),
             'getCamera': grpc.unary_stream_rpc_method_handler(
                     servicer.getCamera,
                     request_deserializer=proto__gen_dot_sensors__pb2.CameraStreamRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.CameraStreamReply.SerializeToString,
+            ),
+            'getAdc': grpc.unary_unary_rpc_method_handler(
+                    servicer.getAdc,
+                    request_deserializer=proto__gen_dot_sensors__pb2.AdcDataRequest.FromString,
+                    response_serializer=proto__gen_dot_sensors__pb2.AdcData.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -172,33 +173,6 @@ class SensorService(object):
             _registered_method=True)
 
     @staticmethod
-    def getAdc(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/sensors.SensorService/getAdc',
-            proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
-            proto__gen_dot_sensors__pb2.AdcData.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def getCamera(request,
             target,
             options=(),
@@ -215,6 +189,33 @@ class SensorService(object):
             '/sensors.SensorService/getCamera',
             proto__gen_dot_sensors__pb2.CameraStreamRequest.SerializeToString,
             proto__gen_dot_sensors__pb2.CameraStreamReply.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getAdc(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sensors.SensorService/getAdc',
+            proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
+            proto__gen_dot_sensors__pb2.AdcData.FromString,
             options,
             channel_credentials,
             insecure,

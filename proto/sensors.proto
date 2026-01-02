@@ -49,11 +49,9 @@ message saveFileRequest {
 }
 
 message SensorStreamRequest {
-    optional uint32 queue_size = 1;
 }
 
 message CameraStreamRequest {
-
 }
 
 enum CameraEncoding {

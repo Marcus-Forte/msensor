@@ -63,8 +63,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  msensor::ADS1115 adc(bus, kDefaultAddress);
-  auto res = adc.init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
+  auto adc = std::make_shared<msensor::ADS1115>(bus, kDefaultAddress);
+  auto res = adc->init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
                       msensor::ADS1115::DataRate::SPS_8,
                       static_cast<msensor::ADS1115::Channel>(channel));
   if (!res) {
@@ -72,11 +72,11 @@ int main(int argc, char **argv) {
               << " address 0x" << std::hex << static_cast<int>(kDefaultAddress)
               << std::dec << std::endl;
   }
-  SensorsServer server;
+  SensorsServer server(adc, nullptr, nullptr, nullptr);
   server.start();
 
   while (true) {
-    if (auto sample = adc.readSingleEnded()) {
+    if (auto sample = adc->readSingleEnded()) {
       std::cout << "ADC ch" << channel << " = " << sample->voltage << " V"
                 << " @ " << sample->timestamp << std::endl;
       constexpr float ExternalGain =
@@ -85,7 +85,6 @@ int main(int argc, char **argv) {
 
       std::cout << "Vin = " << sample->voltage << std::endl;
 
-      server.publishAdc(sample.value());
     } else {
       std::cerr << "ADC read failure on channel " << channel << std::endl;
     }

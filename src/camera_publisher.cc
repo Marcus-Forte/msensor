@@ -6,7 +6,6 @@
 
 #include "camera/opencv_camera.hh"
 #include "sensors_server.hh"
-#include "timing/timing.hh"
 
 using namespace msensor;
 
@@ -40,16 +39,7 @@ int main(int argc, char **argv) {
   SensorsServer server;
   server.start();
 
-  cv::Mat frame;
-
   while (true) {
-    const auto now = timing::getNowUs();
-
-    if (camera.read(frame)) {
-      std::cout << "Captured frame at " << now << " us" << std::endl;
-      server.publishCameraFrame(frame);
-    }
-
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }

@@ -52,58 +52,30 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  msensor::ADS1115 ads1115(bus, DefaultADSAddress);
-  ads1115.init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
+  auto ads1115 = std::make_shared<msensor::ADS1115>(bus, DefaultADSAddress);
+  ads1115->init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
                msensor::ADS1115::DataRate::SPS_8,
                static_cast<msensor::ADS1115::Channel>(0));
 
-  msensor::RPLidar rplidar(lidar_device);
-  rplidar.init();
-  rplidar.setMotorRPM(360);
+  auto rplidar = std::make_shared<msensor::RPLidar>(lidar_device);
+  rplidar->init();
+  rplidar->setMotorRPM(360);
 
-  msensor::ICM20948 icm20948(bus, ICM20948_ADDR0);
-  icm20948.init();
-  icm20948.calibrate();
+  auto icm20948 = std::make_shared<msensor::ICM20948>(bus, ICM20948_ADDR0);
+  icm20948->init();
+  icm20948->calibrate();
 
-  msensor::OpenCvCamera camera(DefaultStreamPipeline);
+  auto camera = std::make_shared<msensor::OpenCvCamera>(DefaultStreamPipeline);
 
-  SensorsServer server;
+  SensorsServer server(ads1115, camera, icm20948, rplidar);
   server.start();
 
-  cv::Mat frame;
-
   while (true) {
-    const auto now = timing::getNowUs();
 
-    const auto scan = rplidar.getScan();
-    const auto imudata = icm20948.getImuData();
-    auto adc_data = ads1115.readSingleEnded();
+    // constexpr float ExternalGain =
+    //     (10.0f + 5.1f) / 5.1f; // 10k and 5.1k resistors
+    // adc_data->voltage *= ExternalGain;
 
-    constexpr float ExternalGain =
-        (10.0f + 5.1f) / 5.1f; // 10k and 5.1k resistors
-    adc_data->voltage *= ExternalGain;
-
-    if (scan) {
-      server.publishScan(scan);
-      // std::cout << "New Scan @ " << scan->timestamp
-      //           << " Points: " << scan->points->size() << std::endl;
-    }
-    if (imudata) {
-      server.publishImu(imudata.value());
-    }
-    if (adc_data) {
-      server.publishAdc(adc_data.value());
-    }
-
-    if (camera.isOpened() && camera.read(frame)) {
-      server.publishCameraFrame(frame);
-    }
-
-    const uint64_t remaining_us = LoopPeriodUs - (timing::getNowUs() - now);
-    if (remaining_us > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(remaining_us));
-    } else {
-      std::cout << "Loop overrun by " << -remaining_us << " us" << std::endl;
-    }
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 }

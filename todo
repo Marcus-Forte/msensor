@@ -5,3 +5,5 @@
 - Logging
 - Optimize camera wire transmission (encoding)
 - Abstract the server queues
+
+- Program ADC gain in the class

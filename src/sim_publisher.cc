@@ -13,8 +13,8 @@ void print_usage() {
 
 int main(int argc, char **argv) {
 
-  auto simLidar = std::make_unique<msensor::SimLidar>();
-  auto simImu = std::make_unique<msensor::SimImu>();
+  auto sim_lidar = std::make_shared<msensor::SimLidar>();
+  auto sim_imu = std::make_shared<msensor::SimImu>();
 
   auto file = std::make_shared<msensor::File>();
   msensor::ScanRecorder recorder(file);
@@ -37,21 +37,18 @@ int main(int argc, char **argv) {
     recorder.start();
   }
 
-  SensorsServer server;
+  SensorsServer server(nullptr, nullptr, sim_imu, sim_lidar);
   server.start();
 
   std::cout << "Publishing scan and Imu data";
   while (true) {
-    const auto scan = simLidar->getScan();
-    const auto imudata = simImu->getImuData();
+    const auto scan = sim_lidar->getScan();
+    const auto imudata = sim_imu->getImuData();
 
-    server.publishScan(scan);
     recorder.record(scan);
     if (imudata) {
-      server.publishImu(imudata.value());
       recorder.record(imudata.value());
     }
   }
 
-  server.stop();
 }

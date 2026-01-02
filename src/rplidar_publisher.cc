@@ -21,13 +21,13 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-  std::unique_ptr<msensor::ILidar> lidar;
+  std::shared_ptr<msensor::ILidar> lidar;
   if (!std::filesystem::exists(argv[1])) {
     std::cerr << "Device: " << argv[1] << " does not exist. Exiting..."
               << std::endl;
     exit(-1);
   }
-  lidar = std::make_unique<msensor::RPLidar>(argv[1]);
+  lidar = std::make_shared<msensor::RPLidar>(argv[1]);
   dynamic_cast<msensor::RPLidar *>(lidar.get())->setMotorRPM(360);
 
   auto file = std::make_shared<msensor::File>();
@@ -47,21 +47,12 @@ int main(int argc, char **argv) {
 
   lidar->init();
 
-  SensorsServer server;
+  SensorsServer server(nullptr, nullptr, nullptr, lidar);
   server.start();
 
   while (true) {
 
-    if (const auto scan = lidar->getScan()) {
-      std::cout << "New Scan @ " << scan->timestamp
-                << " Points: " << scan->points->size() << std::endl;
-
-      recorder.record(scan);
-      server.publishScan(scan);
-    }
-
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  server.stop();
 }

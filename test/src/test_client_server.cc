@@ -39,8 +39,7 @@ TEST_F(TestClientServer, DISABLED_TestServer) {
   scan->timestamp = 10;
 
   auto imu = msensor::IMUData(1, 2, 3, 4, 5, 6, 7);
-  server->publishScan(scan);
-  server->publishImu(imu);
+
 
   // Wait for data to reach the client
   std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -12,15 +12,11 @@
  */
 class SensorsServer {
 public:
-  SensorsServer();
-
+  SensorsServer(std::shared_ptr<IAdc> adc = nullptr, std::shared_ptr<ICamera> camera = nullptr,
+                std::shared_ptr<IImu> imu = nullptr, std::shared_ptr<ILidar> lidar = nullptr);
+      
   void start();
   void stop();
-
-  void publishScan(const std::shared_ptr<msensor::Scan3DI> &scan);
-  void publishImu(msensor::IMUData data);
-  void publishAdc(msensor::AdcSample data);
-  void publishCameraFrame(const cv::Mat &image);
 
 private:
   ScanService scan_service_;

@@ -93,10 +93,8 @@ class saveFileRequest(_message.Message):
     def __init__(self, filename: _Optional[str] = ...) -> None: ...
 
 class SensorStreamRequest(_message.Message):
-    __slots__ = ("queue_size",)
-    QUEUE_SIZE_FIELD_NUMBER: _ClassVar[int]
-    queue_size: int
-    def __init__(self, queue_size: _Optional[int] = ...) -> None: ...
+    __slots__ = ()
+    def __init__(self) -> None: ...
 
 class CameraStreamRequest(_message.Message):
     __slots__ = ()

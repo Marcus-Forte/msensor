@@ -97,7 +97,7 @@ def setup_imu_plots(server: viser.ViserServer):
 
 def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
     context = setup_imu_plots(server)
-    request = sensors_pb2.SensorStreamRequest(queue_size=1)
+    request = sensors_pb2.SensorStreamRequest()
     sample = 0
 
     try:
@@ -115,7 +115,7 @@ def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServ
 
 
 def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
-    request = sensors_pb2.SensorStreamRequest(queue_size=100)
+    request = sensors_pb2.SensorStreamRequest()
     last_timestamp = 0
 
     cloud = server.scene.add_point_cloud(

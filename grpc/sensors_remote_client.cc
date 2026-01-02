@@ -52,7 +52,7 @@ void SensorsRemoteClient::start() {
   read_thread_ = std::jthread([&](std::stop_token stop_token) {
     auto service_context_ = std::make_unique<grpc::ClientContext>();
     sensors::SensorStreamRequest request;
-    request.set_queue_size(g_maxLidarSamples);
+    
     auto reader = service_stub_->getScan(service_context_.get(), request);
 
     sensors::PointCloud3 msg;
@@ -74,7 +74,6 @@ void SensorsRemoteClient::start() {
   imu_reader_thread_ = std::jthread([&](std::stop_token stop_token) {
     auto service_context_ = std::make_unique<grpc::ClientContext>();
     sensors::SensorStreamRequest request;
-    request.set_queue_size(g_maxImuSamples);
 
     auto imu_reader = service_stub_->getImu(service_context_.get(), request);
     sensors::IMUData msg;

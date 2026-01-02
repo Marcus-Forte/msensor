@@ -30,31 +30,15 @@ int main(int argc, char **argv) {
 
   auto i2c_device = std::atoi(argv[1]);
 
-  msensor::ICM20948 icm20948(i2c_device, ICM20948_ADDR0);
-  icm20948.init();
+  auto icm20948 = std::make_shared<msensor::ICM20948>(i2c_device, ICM20948_ADDR0);
+  icm20948->init();
 
-  icm20948.calibrate();
+  icm20948->calibrate();
 
-  SensorsServer server;
+  SensorsServer server(nullptr, nullptr, icm20948, nullptr);
   server.start();
 
   while (true) {
-    const auto now = timing::getNowUs();
-
-    auto imu_data = icm20948.getImuData();
-
-    if (imu_data) {
-      server.publishImu(imu_data.value());
-    }
-
-    const auto remaining_us = sample_period_us - (timing::getNowUs() - now);
-    if (remaining_us > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(remaining_us));
-    } else {
-      std::cout << "IMU loop overrun by " << -remaining_us << " us"
-                << std::endl;
-    }
+    std::this_thread::sleep_for(std::chrono::microseconds(sample_period_us));
   }
-
-  server.stop();
 }
