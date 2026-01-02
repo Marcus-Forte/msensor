@@ -3,9 +3,10 @@
 
 #include "sensors_server.hh"
 
-SensorsServer::SensorsServer(std::shared_ptr<IAdc> adc, std::shared_ptr<ICamera> camera,
-                               std::shared_ptr<IImu> imu,
-                               std::shared_ptr<ILidar> lidar)
+SensorsServer::SensorsServer(std::shared_ptr<IAdc> adc,
+                             std::shared_ptr<ICamera> camera,
+                             std::shared_ptr<IImu> imu,
+                             std::shared_ptr<ILidar> lidar)
     : scan_service_(adc, camera, imu, lidar) {}
 
 void SensorsServer::start() {

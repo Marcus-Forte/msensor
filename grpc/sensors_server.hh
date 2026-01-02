@@ -12,9 +12,11 @@
  */
 class SensorsServer {
 public:
-  SensorsServer(std::shared_ptr<IAdc> adc = nullptr, std::shared_ptr<ICamera> camera = nullptr,
-                std::shared_ptr<IImu> imu = nullptr, std::shared_ptr<ILidar> lidar = nullptr);
-      
+  SensorsServer(std::shared_ptr<IAdc> adc = nullptr,
+                std::shared_ptr<ICamera> camera = nullptr,
+                std::shared_ptr<IImu> imu = nullptr,
+                std::shared_ptr<ILidar> lidar = nullptr);
+
   void start();
   void stop();
 

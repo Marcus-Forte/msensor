@@ -63,15 +63,20 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  constexpr float external_gain =
+      (10.0f + 5.1f) / 5.1f; // 10k and 5.1k resistors
+
   auto adc = std::make_shared<msensor::ADS1115>(bus, kDefaultAddress);
-  auto res = adc->init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
-                      msensor::ADS1115::DataRate::SPS_8,
-                      static_cast<msensor::ADS1115::Channel>(channel));
+  auto res =
+      adc->init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
+                msensor::ADS1115::DataRate::SPS_8,
+                static_cast<msensor::ADS1115::Channel>(channel), external_gain);
   if (!res) {
     std::cerr << "Failed to initialize ADS1115 on I2C bus " << bus
               << " address 0x" << std::hex << static_cast<int>(kDefaultAddress)
               << std::dec << std::endl;
   }
+
   SensorsServer server(adc, nullptr, nullptr, nullptr);
   server.start();
 
@@ -79,9 +84,6 @@ int main(int argc, char **argv) {
     if (auto sample = adc->readSingleEnded()) {
       std::cout << "ADC ch" << channel << " = " << sample->voltage << " V"
                 << " @ " << sample->timestamp << std::endl;
-      constexpr float ExternalGain =
-          (10.0f + 5.1f) / 5.1f; // 10k and 5.1k resistors
-      sample->voltage *= ExternalGain;
 
       std::cout << "Vin = " << sample->voltage << std::endl;
 

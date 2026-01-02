@@ -101,7 +101,7 @@ def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServ
     sample = 0
 
     try:
-        for imu in stub.getImu(request):
+        for imu in stub.getImuData(request):
             if stop_event.is_set():
                 break
             sample += 1
@@ -127,7 +127,7 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
     )
 
     try:
-        for scan in stub.getScan(request):
+        for scan in stub.getLidarScan(request):
             if stop_event.is_set():
                 break
             print(f"Got points: {len(scan.points)} at {scan.timestamp}")
@@ -146,7 +146,7 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
     gui_image_handle: Optional[viser.GuiImageHandle] = None
 
     try:
-        for camera_data in stub.getCamera(request):
+        for camera_data in stub.getCameraFrame(request):
             if stop_event.is_set():
                 break
             
@@ -201,15 +201,14 @@ def stream_adc(
     stub: sensors_pb2_grpc.SensorServiceStub,
     stop_event: threading.Event,
     channel: int,
-    period_sec: float,
     battery_level_handle: viser.GuiNumberHandle,
 ):
     request = sensors_pb2.AdcDataRequest(channel=channel)
-
+    period_sec = DEFAULT_ADC_PERIOD_SEC
     print(f"Polling ADC channel {channel} every {period_sec}s. Press Ctrl+C to stop.")
     while not stop_event.is_set():
         try:
-            resp = stub.getAdc(request)
+            resp = stub.getAdcData(request)
             print(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
             battery_level_handle.value = resp.sample
         except grpc.RpcError as exc:
@@ -229,12 +228,6 @@ def parse_args():
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
     parser.add_argument("--adc", action="store_true", help="Poll the ADC")
     parser.add_argument("--adc-channel", type=int, default=DEFAULT_ADC_CHANNEL, help="ADC channel to poll")
-    parser.add_argument(
-        "--adc-period",
-        type=float,
-        default=DEFAULT_ADC_PERIOD_SEC,
-        help="Seconds between ADC polls",
-    )
     return parser.parse_args()
 
 
@@ -285,7 +278,7 @@ def main():
         if args.adc:
             t = threading.Thread(
                 target=stream_adc,
-                args=(stub, stop_event, args.adc_channel, args.adc_period, battery_level_handle),
+                args=(stub, stop_event, args.adc_channel, battery_level_handle),
                 name="adc-thread",
             )
             t.start()

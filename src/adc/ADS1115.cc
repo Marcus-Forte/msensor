@@ -96,8 +96,10 @@ std::optional<AdcSample> ADS1115::readSingleEnded() const {
   return AdcSample{convertRawToVoltage(raw), timing::getNowUs()};
 }
 
-bool ADS1115::init(Gain gain, DataRate rate, Channel channel) {
+bool ADS1115::init(Gain gain, DataRate rate, Channel channel,
+                   float external_gain) {
   gain_ = gain;
+  external_gain_ = external_gain;
 
   uint16_t config = 0;
   config |= channelBits(channel);
@@ -138,4 +140,4 @@ inline int16_t ADS1115::read_(uint8_t reg_address) const {
   return beToHost(static_cast<uint16_t>(raw));
 }
 
-} // namespace msensor
+} //

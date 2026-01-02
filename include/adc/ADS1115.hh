@@ -51,7 +51,8 @@ public:
    *
    * @return true on success, false otherwise.
    */
-  bool init(Gain gain, DataRate rate, Channel channel);
+  bool init(Gain gain, DataRate rate, Channel channel,
+            float external_gain = 1.0f);
 
   /// Read the configured channel as a single-ended voltage sample.
   std::optional<AdcSample> readSingleEnded() const override;
@@ -71,6 +72,7 @@ private:
   const int i2c_ads_address_;
   int i2c_device_fd_;
   Gain gain_;
+  float external_gain_;
 };
 
 } // namespace msensor

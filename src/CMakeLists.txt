@@ -6,9 +6,13 @@ add_subdirectory(recorder)
 add_subdirectory(adc)
 add_subdirectory(camera)
 
-# Combines all
+# Core library
 add_library(${PROJECT_NAME} INTERFACE)
 target_link_libraries(${PROJECT_NAME} INTERFACE ${PROJECT_NAME} timing sensors_server scan_recorder sensors_proto)
+
+# Sensor simulator
+add_executable(sim_publisher sim_publisher.cc)
+target_link_libraries(sim_publisher ${PROJECT_NAME} sim_lidar sim_imu sim_camera sim_adc)
 
 add_executable(icm20948_publisher icm20948_publisher.cc)
 target_link_libraries(icm20948_publisher ${PROJECT_NAME} icm-20948)
@@ -18,9 +22,6 @@ target_link_libraries(rplidar_publisher rp_lidar ${PROJECT_NAME})
 
 add_executable(mid360_publisher mid360_publisher.cc)
 target_link_libraries(mid360_publisher mid360 ${PROJECT_NAME})
-
-add_executable(sim_publisher sim_publisher.cc)
-target_link_libraries(sim_publisher ${PROJECT_NAME} sim_lidar sim_imu)
 
 add_executable(ads1115_publisher ads1115_publisher.cc)
 target_link_libraries(ads1115_publisher ads1115 ${PROJECT_NAME})

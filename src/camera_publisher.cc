@@ -36,10 +36,11 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  SensorsServer server;
+  SensorsServer server(nullptr, std::make_shared<OpenCvCamera>(camera), nullptr,
+                       nullptr);
   server.start();
 
   while (true) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 }

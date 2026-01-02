@@ -34,23 +34,23 @@ class SensorServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.getScan = channel.unary_stream(
-                '/sensors.SensorService/getScan',
+        self.getLidarScan = channel.unary_stream(
+                '/sensors.SensorService/getLidarScan',
                 request_serializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.PointCloud3.FromString,
                 _registered_method=True)
-        self.getImu = channel.unary_stream(
-                '/sensors.SensorService/getImu',
+        self.getImuData = channel.unary_stream(
+                '/sensors.SensorService/getImuData',
                 request_serializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.IMUData.FromString,
                 _registered_method=True)
-        self.getCamera = channel.unary_stream(
-                '/sensors.SensorService/getCamera',
+        self.getCameraFrame = channel.unary_stream(
+                '/sensors.SensorService/getCameraFrame',
                 request_serializer=proto__gen_dot_sensors__pb2.CameraStreamRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.CameraStreamReply.FromString,
                 _registered_method=True)
-        self.getAdc = channel.unary_unary(
-                '/sensors.SensorService/getAdc',
+        self.getAdcData = channel.unary_unary(
+                '/sensors.SensorService/getAdcData',
                 request_serializer=proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
                 response_deserializer=proto__gen_dot_sensors__pb2.AdcData.FromString,
                 _registered_method=True)
@@ -59,26 +59,26 @@ class SensorServiceStub(object):
 class SensorServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def getScan(self, request, context):
+    def getLidarScan(self, request, context):
         """Sensor Streams
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getImu(self, request, context):
+    def getImuData(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getCamera(self, request, context):
+    def getCameraFrame(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getAdc(self, request, context):
+    def getAdcData(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -87,23 +87,23 @@ class SensorServiceServicer(object):
 
 def add_SensorServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'getScan': grpc.unary_stream_rpc_method_handler(
-                    servicer.getScan,
+            'getLidarScan': grpc.unary_stream_rpc_method_handler(
+                    servicer.getLidarScan,
                     request_deserializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.PointCloud3.SerializeToString,
             ),
-            'getImu': grpc.unary_stream_rpc_method_handler(
-                    servicer.getImu,
+            'getImuData': grpc.unary_stream_rpc_method_handler(
+                    servicer.getImuData,
                     request_deserializer=proto__gen_dot_sensors__pb2.SensorStreamRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.IMUData.SerializeToString,
             ),
-            'getCamera': grpc.unary_stream_rpc_method_handler(
-                    servicer.getCamera,
+            'getCameraFrame': grpc.unary_stream_rpc_method_handler(
+                    servicer.getCameraFrame,
                     request_deserializer=proto__gen_dot_sensors__pb2.CameraStreamRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.CameraStreamReply.SerializeToString,
             ),
-            'getAdc': grpc.unary_unary_rpc_method_handler(
-                    servicer.getAdc,
+            'getAdcData': grpc.unary_unary_rpc_method_handler(
+                    servicer.getAdcData,
                     request_deserializer=proto__gen_dot_sensors__pb2.AdcDataRequest.FromString,
                     response_serializer=proto__gen_dot_sensors__pb2.AdcData.SerializeToString,
             ),
@@ -119,7 +119,7 @@ class SensorService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def getScan(request,
+    def getLidarScan(request,
             target,
             options=(),
             channel_credentials=None,
@@ -132,7 +132,7 @@ class SensorService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/sensors.SensorService/getScan',
+            '/sensors.SensorService/getLidarScan',
             proto__gen_dot_sensors__pb2.SensorStreamRequest.SerializeToString,
             proto__gen_dot_sensors__pb2.PointCloud3.FromString,
             options,
@@ -146,7 +146,7 @@ class SensorService(object):
             _registered_method=True)
 
     @staticmethod
-    def getImu(request,
+    def getImuData(request,
             target,
             options=(),
             channel_credentials=None,
@@ -159,7 +159,7 @@ class SensorService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/sensors.SensorService/getImu',
+            '/sensors.SensorService/getImuData',
             proto__gen_dot_sensors__pb2.SensorStreamRequest.SerializeToString,
             proto__gen_dot_sensors__pb2.IMUData.FromString,
             options,
@@ -173,7 +173,7 @@ class SensorService(object):
             _registered_method=True)
 
     @staticmethod
-    def getCamera(request,
+    def getCameraFrame(request,
             target,
             options=(),
             channel_credentials=None,
@@ -186,7 +186,7 @@ class SensorService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/sensors.SensorService/getCamera',
+            '/sensors.SensorService/getCameraFrame',
             proto__gen_dot_sensors__pb2.CameraStreamRequest.SerializeToString,
             proto__gen_dot_sensors__pb2.CameraStreamReply.FromString,
             options,
@@ -200,7 +200,7 @@ class SensorService(object):
             _registered_method=True)
 
     @staticmethod
-    def getAdc(request,
+    def getAdcData(request,
             target,
             options=(),
             channel_credentials=None,
@@ -213,7 +213,7 @@ class SensorService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sensors.SensorService/getAdc',
+            '/sensors.SensorService/getAdcData',
             proto__gen_dot_sensors__pb2.AdcDataRequest.SerializeToString,
             proto__gen_dot_sensors__pb2.AdcData.FromString,
             options,

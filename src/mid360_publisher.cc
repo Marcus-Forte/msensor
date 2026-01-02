@@ -1,20 +1,16 @@
 #include <chrono>
-
 #include <iostream>
 #include <thread>
 
-#include "file/file.hh"
 #include "lidar/mid360.hh"
-#include "recorder/scan_recorder.hh"
 #include "sensors_server.hh"
 
 void printUsage() {
-  std::cout << "Usage: app [config] [accusamples] [mode: 0, 1,2,3] [0: "
-               "non-record, 1:record]"
+  std::cout << "Usage: app [config] [accusamples] [mode: 0, 1,2,3]"
             << std::endl;
 }
 int main(int argc, char **argv) {
-  if (argc < 5) {
+  if (argc < 4) {
     printUsage();
     exit(0);
   }
@@ -40,13 +36,6 @@ int main(int argc, char **argv) {
   }
 
   const auto record = atoi(argv[4]);
-  auto file = std::make_shared<msensor::File>();
-  msensor::ScanRecorder recorder(file);
-
-  if (record == 1) {
-    recorder.start();
-    std::cout << "Recording scans." << std::endl;
-  }
 
   lidar->startSampling();
 
@@ -54,7 +43,7 @@ int main(int argc, char **argv) {
   server.start();
 
   while (true) {
-   
+
     /// \todo sleep just enough
     std::this_thread::sleep_for(std::chrono::microseconds(100));
   }

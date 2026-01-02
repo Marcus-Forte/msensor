@@ -1,43 +1,23 @@
 #include <getopt.h>
 #include <iostream>
+#include <thread>
 
-#include "file/file.hh"
+#include "adc/sim_adc.hh"
+#include "camera/sim_camera.hh"
 #include "imu/sim_imu.hh"
 #include "lidar/sim_lidar.hh"
-#include "recorder/scan_recorder.hh"
 #include "sensors_server.hh"
 
-void print_usage() {
-  std::cout << "Usage: sim_publisher [-r record]" << std::endl;
-}
+void print_usage() { std::cout << "Usage: sim_publisher" << std::endl; }
 
 int main(int argc, char **argv) {
 
   auto sim_lidar = std::make_shared<msensor::SimLidar>();
   auto sim_imu = std::make_shared<msensor::SimImu>();
+  auto sim_camera = std::make_shared<msensor::SimCamera>();
+  auto sim_adc = std::make_shared<msensor::SimAdc>();
 
-  auto file = std::make_shared<msensor::File>();
-  msensor::ScanRecorder recorder(file);
-
-  bool record_scans = false;
-  int opt;
-  while ((opt = getopt(argc, argv, "rh")) != -1) {
-    switch (opt) {
-    case 'h':
-      print_usage();
-      exit(0);
-    case 'r':
-      record_scans = true;
-      break;
-    }
-  }
-
-  if (record_scans) {
-    std::cout << "Recording scan enabled" << std::endl;
-    recorder.start();
-  }
-
-  SensorsServer server(nullptr, nullptr, sim_imu, sim_lidar);
+  SensorsServer server(sim_adc, sim_camera, sim_imu, sim_lidar);
   server.start();
 
   std::cout << "Publishing scan and Imu data";
@@ -45,10 +25,6 @@ int main(int argc, char **argv) {
     const auto scan = sim_lidar->getScan();
     const auto imudata = sim_imu->getImuData();
 
-    recorder.record(scan);
-    if (imudata) {
-      recorder.record(imudata.value());
-    }
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
-
 }

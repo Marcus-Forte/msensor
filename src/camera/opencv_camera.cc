@@ -1,4 +1,5 @@
 #include "camera/opencv_camera.hh"
+#include "timing/timing.hh"
 
 #include <opencv2/videoio.hpp>
 
@@ -12,11 +13,15 @@ OpenCvCamera::OpenCvCamera(int device_id) { m_capture.open(device_id); }
 
 OpenCvCamera::~OpenCvCamera() { release(); }
 
-bool OpenCvCamera::read(cv::Mat &frame) {
+bool OpenCvCamera::read(CameraFrame &frame) {
   if (!isOpened()) {
     return false;
   }
-  return m_capture.read(frame);
+  bool success = m_capture.read(frame.mat);
+  if (success) {
+    frame.timestamp = timing::getNowUs();
+  }
+  return success;
 }
 
 bool OpenCvCamera::isOpened() const { return m_capture.isOpened(); }

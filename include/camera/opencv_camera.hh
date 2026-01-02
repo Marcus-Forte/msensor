@@ -45,7 +45,7 @@ public:
    * @return true if frame was successfully captured, false on error or if
    * camera is not opened.
    */
-  bool read(cv::Mat &frame) override;
+  bool read(CameraFrame &frame) override;
 
   /**
    * @brief Check if the camera is successfully opened and ready to capture.

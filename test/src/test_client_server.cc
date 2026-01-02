@@ -40,7 +40,6 @@ TEST_F(TestClientServer, DISABLED_TestServer) {
 
   auto imu = msensor::IMUData(1, 2, 3, 4, 5, 6, 7);
 
-
   // Wait for data to reach the client
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 

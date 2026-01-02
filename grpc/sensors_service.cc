@@ -10,20 +10,22 @@ ScanService::ScanService(std::shared_ptr<IAdc> adc,
     : adc_(adc), camera_(camera), imu_(imu), lidar_(lidar) {}
 
 grpc::Status
-ScanService::getScan(::grpc::ServerContext *context,
-                     const ::sensors::SensorStreamRequest *request,
-                     ::grpc::ServerWriter<sensors::PointCloud3> *writer) {
+ScanService::getLidarScan(::grpc::ServerContext *context,
+                          const ::sensors::SensorStreamRequest *request,
+                          ::grpc::ServerWriter<sensors::PointCloud3> *writer) {
+
   static bool s_client_connected = false;
-  if (s_client_connected) {
-    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client stream supported");
-  }
 
   if (!lidar_) {
     return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Lidar not available");
   }
-  std::cout << "Start Lidar scan stream." << std::endl;
 
+  if (s_client_connected) {
+    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
+                        "Only one client per stream supported");
+  }
+
+  std::cout << "Start Lidar scan stream." << std::endl;
   s_client_connected = true;
 
   while (!context->IsCancelled()) {
@@ -50,16 +52,19 @@ ScanService::getScan(::grpc::ServerContext *context,
 }
 
 ::grpc::Status
-ScanService::getImu(::grpc::ServerContext *context,
-                    const ::sensors::SensorStreamRequest *request,
-                    ::grpc::ServerWriter<sensors::IMUData> *writer) {
+ScanService::getImuData(::grpc::ServerContext *context,
+                        const ::sensors::SensorStreamRequest *request,
+                        ::grpc::ServerWriter<sensors::IMUData> *writer) {
+
   static bool s_client_connected = false;
-  if (s_client_connected)
-    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client supported");
 
   if (!imu_) {
     return grpc::Status(grpc::StatusCode::UNAVAILABLE, "IMU not available");
+  }
+
+  if (s_client_connected) {
+    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
+                        "Only one client per stream supported");
   }
 
   std::cout << "Start IMU data stream." << std::endl;
@@ -90,9 +95,9 @@ ScanService::getImu(::grpc::ServerContext *context,
   return ::grpc::Status::OK;
 }
 
-::grpc::Status ScanService::getAdc(::grpc::ServerContext *context,
-                                   const ::sensors::AdcDataRequest *request,
-                                   ::sensors::AdcData *response) {
+::grpc::Status ScanService::getAdcData(::grpc::ServerContext *context,
+                                       const ::sensors::AdcDataRequest *request,
+                                       ::sensors::AdcData *response) {
   if (!adc_) {
     return grpc::Status(grpc::StatusCode::UNAVAILABLE, "ADC not available");
   }
@@ -107,7 +112,7 @@ ScanService::getImu(::grpc::ServerContext *context,
   return ::grpc::Status::OK;
 }
 
-::grpc::Status ScanService::getCamera(
+::grpc::Status ScanService::getCameraFrame(
     ::grpc::ServerContext *context,
     const ::sensors::CameraStreamRequest *request,
     ::grpc::ServerWriter<::sensors::CameraStreamReply> *writer) {
@@ -120,7 +125,7 @@ ScanService::getImu(::grpc::ServerContext *context,
 
   if (s_client_connected) {
     return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client stream supported");
+                        "Only one client per stream supported");
   }
 
   std::cout << "Start camera stream." << std::endl;
@@ -129,33 +134,33 @@ ScanService::getImu(::grpc::ServerContext *context,
 
   while (!context->IsCancelled()) {
 
-    cv::Mat frame;
+    CameraFrame frame;
     if (!camera_->read(frame)) {
       std::cerr << "Failed to read frame from camera." << std::endl;
       continue;
     }
 
     sensors::CameraStreamReply reply;
-    reply.set_width(frame.cols);
-    reply.set_height(frame.rows);
+    reply.set_width(frame.mat.cols);
+    reply.set_height(frame.mat.rows);
 
     // Set encoding based on OpenCV Mat type
-    if (frame.channels() == 3) {
+    if (frame.mat.channels() == 3) {
       reply.set_encoding(sensors::CameraEncoding::BGR8);
-    } else if (frame.channels() == 1) {
+    } else if (frame.mat.channels() == 1) {
       reply.set_encoding(sensors::CameraEncoding::GRAY8);
     } else {
       reply.set_encoding(sensors::CameraEncoding::UNKNOWN);
     }
 
     // Set timestamp
-    reply.set_timestamp(timing::getNowUs());
+    reply.set_timestamp(frame.timestamp);
 
     std::vector<uchar> jpeg_buffer;
     const std::vector<int> jpeg_params = {cv::IMWRITE_JPEG_QUALITY, 85};
-    if (!cv::imencode(".jpg", frame, jpeg_buffer, jpeg_params)) {
+    if (!cv::imencode(".jpg", frame.mat, jpeg_buffer, jpeg_params)) {
       std::cerr << "Failed to encode frame as JPEG." << std::endl;
-      
+
       continue;
     }
 
