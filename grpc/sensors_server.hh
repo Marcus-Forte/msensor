@@ -1,8 +1,9 @@
 #pragma once
 
-#include "sensors_service.hh"
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/server_builder.h>
+
+#include "sensors_service.hh"
 
 /**
  * @brief This class manages the gRPC server and provides methods to publish

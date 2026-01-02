@@ -1,7 +1,7 @@
+#include <opencv2/imgcodecs.hpp>
+
 #include "sensors_service.hh"
 #include "timing/timing.hh"
-#include <opencv2/imgcodecs.hpp>
-#include <pcl/io/ply_io.h>
 
 constexpr uint32_t DEFAULT_QUEUE_SIZE = 100;
 constexpr uint32_t MAX_QUEUE_SIZE = 100000;

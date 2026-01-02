@@ -1,7 +1,7 @@
-#include "sensors_server.hh"
-
 #include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server_builder.h>
+
+#include "sensors_server.hh"
 
 SensorsServer::SensorsServer() = default;
 

@@ -1,12 +1,12 @@
 #pragma once
 
+#include <boost/lockfree/spsc_queue.hpp>
+
 #include "interface/IAdc.hh"
 #include "interface/ICamera.hh"
 #include "interface/IImu.hh"
 #include "interface/ILidar.hh"
-
 #include "sensors.grpc.pb.h"
-#include <boost/lockfree/spsc_queue.hpp>
 
 /**
  * @brief Call the methods of this service to publish data via gRPC.

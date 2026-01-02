@@ -2,7 +2,6 @@
 
 #include "interface/IImu.hh"
 #include "interface/ILidar.hh"
-
 #include "sensors.pb.h"
 
 /**

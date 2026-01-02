@@ -1,9 +1,10 @@
-#include "sensors_remote_client.hh"
-#include "conversions.hh"
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
 #include <thread>
+
+#include "conversions.hh"
+#include "sensors_remote_client.hh"
 
 constexpr int g_idleTimeMs = 5;
 constexpr size_t g_maxLidarSamples = 100;

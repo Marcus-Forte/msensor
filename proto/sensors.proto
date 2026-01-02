@@ -73,8 +73,11 @@ message CameraStreamReply {
 }
 
 service SensorService {
+    
+    // Sensor Streams
     rpc getScan(SensorStreamRequest) returns (stream PointCloud3);
     rpc getImu(SensorStreamRequest) returns (stream IMUData);
-    rpc getAdc(AdcDataRequest) returns (AdcData);
     rpc getCamera(CameraStreamRequest) returns (stream CameraStreamReply);   
+
+    rpc getAdc(AdcDataRequest) returns (AdcData);
 }

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "interface/IImu.hh"
-#include "interface/ILidar.hh"
-
 #include <boost/lockfree/spsc_queue.hpp>
-
-#include "sensors.grpc.pb.h"
 #include <grpcpp/channel.h>
 #include <memory>
 #include <thread>
+
+#include "interface/IImu.hh"
+#include "interface/ILidar.hh"
+#include "sensors.grpc.pb.h"
 
 /**
  * @brief This class connects to a SensorService and provides methods to get
