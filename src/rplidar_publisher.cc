@@ -1,11 +1,13 @@
-#include "file/File.hh"
-#include "lidar/RPLidar.hh"
-#include "recorder/ScanRecorder.hh"
-#include "sensors_server.hh"
+
 #include <filesystem>
 #include <getopt.h>
 #include <iostream>
 #include <thread>
+
+#include "file/file.hh"
+#include "lidar/rp_lidar.hh"
+#include "recorder/scan_recorder.hh"
+#include "sensors_server.hh"
 
 void print_usage() {
   std::cout << "Usage: rplidar_publisher [serial device path]  [-r record] "

@@ -28,4 +28,4 @@ See `test/client` folder.
 
 A `DockerfileRuntime` is provided to offer small footprint images that allows one to run the sensor driver applications from inside a container. 
 
-Make sure the hardware is correctly mapped to the container (e.g `--device /dev/i2c-1`, `--device /dev/ttyUSB*`,  `--network=host`, ...)
+Make sure the hardware is correctly mapped to the container (e.g `--device /dev/i2c-1`, `--device /dev/ttyUSB*`,  `--network=host`, ...), or use `docker run -v /dev:/dev -v /run/udev:/run/udev --privileged` to allow complete device access.

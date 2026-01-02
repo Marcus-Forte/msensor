@@ -3,9 +3,9 @@
 #include <iostream>
 #include <thread>
 
-#include "file/File.hh"
-#include "lidar/Mid360.hh"
-#include "recorder/ScanRecorder.hh"
+#include "file/file.hh"
+#include "lidar/mid360.hh"
+#include "recorder/scan_recorder.hh"
 #include "sensors_server.hh"
 
 void printUsage() {

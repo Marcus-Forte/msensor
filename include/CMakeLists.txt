@@ -5,11 +5,11 @@ target_include_directories(IFile INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(IImu INTERFACE)
 target_include_directories(IImu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(IImu INTERFACE Timing)
+target_link_libraries(IImu INTERFACE timing)
 
 add_library(ILidar INTERFACE)
 target_include_directories(ILidar INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ILidar INTERFACE Timing ${PCL_LIBRARIES})
+target_link_libraries(ILidar INTERFACE timing ${PCL_LIBRARIES})
 
 add_library(IAdc INTERFACE)
 target_include_directories(IAdc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})

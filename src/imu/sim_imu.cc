@@ -1,4 +1,4 @@
-#include "imu/SimImu.hh"
+#include "imu/sim_imu.hh"
 #include "timing/timing.hh"
 #include <random>
 #include <thread>

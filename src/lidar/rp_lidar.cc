@@ -1,4 +1,4 @@
-#include "lidar/RPLidar.hh"
+#include "lidar/rp_lidar.hh"
 #include <format>
 #include <iostream>
 #include <stdexcept>

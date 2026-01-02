@@ -1,4 +1,4 @@
-#include "lidar/Mid360.hh"
+#include "lidar/mid360.hh"
 
 #include <future>
 #include <livox_lidar_def.h>

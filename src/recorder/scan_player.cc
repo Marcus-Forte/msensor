@@ -1,4 +1,4 @@
-#include "recorder/ScanPlayer.hh"
+#include "recorder/scan_player.hh"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>

@@ -20,7 +20,15 @@ public:
    * @param device_id Camera device index (0 for default camera, 1 for second,
    * etc.) or video file path. Passed directly to cv::VideoCapture::open().
    */
-  OpenCvCamera(std::string pipeline);
+  OpenCvCamera(int device_id);
+
+  /**
+   * @brief Construct a new OpenCV Camera object.
+   *
+   * @param pipeline GStreamer pipeline string for advanced camera
+   * configurations.
+   */
+  OpenCvCamera(std::string &&pipeline);
 
   /**
    * @brief Destroy the OpenCV Camera object.

@@ -1,10 +1,11 @@
-#include "file/File.hh"
-#include "imu/SimImu.hh"
-#include "lidar/SimLidar.hh"
-#include "recorder/ScanRecorder.hh"
-#include "sensors_server.hh"
 #include <getopt.h>
 #include <iostream>
+
+#include "file/file.hh"
+#include "imu/sim_imu.hh"
+#include "lidar/sim_lidar.hh"
+#include "recorder/scan_recorder.hh"
+#include "sensors_server.hh"
 
 void print_usage() {
   std::cout << "Usage: sim_publisher [-r record]" << std::endl;

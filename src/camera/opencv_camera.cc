@@ -4,7 +4,11 @@
 
 namespace msensor {
 
-OpenCvCamera::OpenCvCamera(std::string pipeline) { m_capture.open(pipeline, cv::CAP_GSTREAMER); }
+OpenCvCamera::OpenCvCamera(std::string &&pipeline) {
+  m_capture.open(pipeline, cv::CAP_GSTREAMER);
+}
+
+OpenCvCamera::OpenCvCamera(int device_id) { m_capture.open(device_id); }
 
 OpenCvCamera::~OpenCvCamera() { release(); }
 

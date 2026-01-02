@@ -1,4 +1,4 @@
-add_library(File
-File.cc)
+add_library(file
+file.cc)
 
-target_link_libraries(File IFile)
+target_link_libraries(file IFile)

@@ -1,10 +1,11 @@
+#include <getopt.h>
+#include <iostream>
+#include <thread>
+
 #include "imu/icm-20948.h"
 #include "imu/icm-20948_defs.h"
 #include "sensors_server.hh"
 #include "timing/timing.hh"
-#include <getopt.h>
-#include <iostream>
-#include <thread>
 
 constexpr uint64_t sample_period_us = 10000; // 100 hz
 

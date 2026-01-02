@@ -1,14 +1,14 @@
+#include <filesystem>
+#include <iostream>
+#include <thread>
+
 #include "adc/ADS1115.hh"
 #include "camera/opencv_camera.hh"
 #include "imu/icm-20948.h"
 #include "imu/icm-20948_defs.h"
-#include "lidar/RPLidar.hh"
+#include "lidar/rp_lidar.hh"
 #include "sensors_server.hh"
 #include "timing/timing.hh"
-
-#include <filesystem>
-#include <iostream>
-#include <thread>
 
 constexpr int DefaultI2cBus = 1;
 constexpr uint8_t DefaultADSAddress = 0x48;

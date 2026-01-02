@@ -1,4 +1,4 @@
-#include "recorder/ScanRecorder.hh"
+#include "recorder/scan_recorder.hh"
 #include "sensors.pb.h"
 #include "timing/timing.hh"
 #include <mutex>
