@@ -2,6 +2,7 @@ import argparse
 import threading
 import time
 from typing import Optional, Sequence
+from colormap import int2rgb
 
 import cv2
 import grpc
@@ -18,7 +19,17 @@ DEFAULT_ADC_CHANNEL = 0
 DEFAULT_ADC_PERIOD_SEC = 0.5
 
 
-def to_numpy(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
+def to_viser_pointcloud_colors(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
+    colors = np.zeros((len(points), 3), dtype=np.uint8)
+    for i, point in enumerate(points):
+        rgb = int2rgb(point.intensity)
+        colors[i, 0] = rgb[0] * 255
+        colors[i, 1] = rgb[1] * 255
+        colors[i, 2] = rgb[2] * 255
+    return colors
+
+
+def to_viser_pointcloud(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
     arr = np.zeros((len(points), 3), dtype=np.float32)
     for i, point in enumerate(points):
         arr[i, 0] = point.x
@@ -115,7 +126,7 @@ def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServ
         except grpc.RpcError as exc:
             print(f"IMU stream error: {exc.code().name} - {exc.details()}")
 
-    time.sleep(1.0)
+        time.sleep(1.0)
 
 
 def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
@@ -137,11 +148,13 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
                 delta_t = scan.timestamp - last_timestamp
                 print(f" DeltaT: {delta_t} ms")
                 last_timestamp = scan.timestamp
-                cloud.points = to_numpy(scan.points)
+                cloud.points = to_viser_pointcloud(scan.points)
+                cloud.colors = to_viser_pointcloud_colors(scan.points)
 
         except grpc.RpcError as exc:
             print(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
-    time.sleep(1.0)
+
+        time.sleep(1.0)
 
 
 def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
@@ -155,7 +168,7 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
 
                 frame_count += 1
                 print(
-                    f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding}"
+                    f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.timestamp}"
                 )
 
                 # Decode the image data
@@ -201,7 +214,7 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
         except grpc.RpcError as exc:
             print(f"Camera stream error: {exc.code().name} - {exc.details()}")
 
-    time.sleep(1.0)
+        time.sleep(1.0)
 
 
 def stream_adc(

@@ -6,13 +6,15 @@ namespace msensor {
 
 bool SimCamera::read(CameraFrame &frame) {
   // Generate a simple synthetic image (e.g., a gradient)
-  static int width = 640;
-  static int height = 480;
+  constexpr int width = 640;
+  constexpr int height = 480;
+  constexpr int factor = 256;
+
   frame.mat.create(height, width, CV_8UC3);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       frame.mat.at<cv::Vec3b>(y, x) =
-          cv::Vec3b(x % 256, y % 256, (x + y) % 256);
+          cv::Vec3b(x % factor, y % factor, (x + y) % factor);
     }
   }
   frame.timestamp = timing::getNowUs();

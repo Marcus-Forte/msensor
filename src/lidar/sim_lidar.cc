@@ -20,15 +20,16 @@ std::shared_ptr<Scan3DI> SimLidar::getScan() {
 
   std::uniform_real_distribution<> dis(-1.0, 1.0);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(50)); // 20 Hz.
   auto scan = std::make_shared<Scan3DI>();
   scan->points->reserve(nr_points);
 
   for (int i = 0; i < nr_points; ++i) {
-    scan->points->emplace_back(dis(gen), dis(gen), dis(gen), 0);
+    scan->points->emplace_back(dis(gen), dis(gen), dis(gen), i % nr_points);
   }
 
   scan->timestamp = timing::getNowUs();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(50)); // 20 Hz.
 
   return scan;
 }

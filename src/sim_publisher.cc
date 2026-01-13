@@ -17,7 +17,6 @@ int main(int argc, char **argv) {
   auto sim_camera = std::make_shared<msensor::SimCamera>();
   auto sim_adc = std::make_shared<msensor::SimAdc>();
 
-
   SensorsServer server(sim_adc, sim_camera, sim_imu, sim_lidar);
   server.start();
 
