@@ -1,6 +1,5 @@
 #include "lidar/sim_lidar.hh"
 #include "timing/timing.hh"
-#include <chrono>
 #include <iostream>
 #include <random>
 #include <thread>
@@ -14,7 +13,7 @@ void SimLidar::stopSampling() { std::cout << "stopSampling" << std::endl; }
 
 std::shared_ptr<Scan3DI> SimLidar::getScan() {
 
-  const int nr_points = 10;
+  const int nr_points = 100;
 
   std::random_device rd;
   std::mt19937 gen(rd());

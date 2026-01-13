@@ -1,7 +1,6 @@
 #include <opencv2/imgcodecs.hpp>
 
 #include "sensors_service.hh"
-#include "timing/timing.hh"
 
 ScanService::ScanService(std::shared_ptr<IAdc> adc,
                          std::shared_ptr<ICamera> camera,

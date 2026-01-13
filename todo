@@ -4,6 +4,10 @@
 - Support more subscribers at once
 - Logging
 - Optimize camera wire transmission (encoding)
-- Abstract the server queues
 
 - Program ADC gain in the class
+
+
+- Sensor Bus
+ - Decouple Sensor Getter from Getting sensor data. 
+ - Can be done in the gRPC service.

@@ -1,5 +1,6 @@
 import argparse
 import threading
+import time
 from typing import Optional, Sequence
 
 import cv2
@@ -100,18 +101,21 @@ def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServ
     request = sensors_pb2.SensorStreamRequest()
     sample = 0
 
-    try:
-        for imu in stub.getImuData(request):
-            if stop_event.is_set():
-                break
-            sample += 1
-            context["y_acc"][:, sample % context["num_timesteps"]] = (imu.ax, imu.ay, imu.az)
-            context["uplot_handles"][0].data = (context["x_data"], *context["y_acc"])
+    while not stop_event.is_set():
+        try:
+            for imu in stub.getImuData(request):
+                if stop_event.is_set():
+                    break
+                sample += 1
+                context["y_acc"][:, sample % context["num_timesteps"]] = (imu.ax, imu.ay, imu.az)
+                context["uplot_handles"][0].data = (context["x_data"], *context["y_acc"])
 
-            context["y_gyr"][:, sample % context["num_timesteps"]] = (imu.gx, imu.gy, imu.gz)
-            context["uplot_handles"][1].data = (context["x_data"], *context["y_gyr"])
-    except grpc.RpcError as exc:
-        print(f"IMU stream error: {exc.code().name} - {exc.details()}")
+                context["y_gyr"][:, sample % context["num_timesteps"]] = (imu.gx, imu.gy, imu.gz)
+                context["uplot_handles"][1].data = (context["x_data"], *context["y_gyr"])
+        except grpc.RpcError as exc:
+            print(f"IMU stream error: {exc.code().name} - {exc.details()}")
+
+    time.sleep(1.0)
 
 
 def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
@@ -126,18 +130,18 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
         point_shape="rounded",
     )
 
-    try:
-        for scan in stub.getLidarScan(request):
-            if stop_event.is_set():
-                break
-            print(f"Got points: {len(scan.points)} at {scan.timestamp}")
-            delta_t = scan.timestamp - last_timestamp
-            print(f" DeltaT: {delta_t} ms")
-            last_timestamp = scan.timestamp
-            cloud.points = to_numpy(scan.points)
+    while not stop_event.is_set():
+        try:
+            for scan in stub.getLidarScan(request):
+                print(f"Got points: {len(scan.points)} at {scan.timestamp}")
+                delta_t = scan.timestamp - last_timestamp
+                print(f" DeltaT: {delta_t} ms")
+                last_timestamp = scan.timestamp
+                cloud.points = to_numpy(scan.points)
 
-    except grpc.RpcError as exc:
-        print(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
+        except grpc.RpcError as exc:
+            print(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
+    time.sleep(1.0)
 
 
 def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
@@ -145,56 +149,59 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
     frame_count = 0
     gui_image_handle: Optional[viser.GuiImageHandle] = None
 
-    try:
-        for camera_data in stub.getCameraFrame(request):
-            if stop_event.is_set():
-                break
-            
-            frame_count += 1
-            print(f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding}")
-            
-            # Decode the image data
-            if camera_data.encoding == sensors_pb2.BGR8:
-                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
-                img = img_array.reshape((camera_data.height, camera_data.width, 3))
-                # Convert BGR to RGB for viser display
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            elif camera_data.encoding == sensors_pb2.GRAY8:
-                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
-                img = img_array.reshape((camera_data.height, camera_data.width))
-                # Convert grayscale to RGB for viser display
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-            elif camera_data.encoding == sensors_pb2.RGB8:
-                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
-                img_rgb = img_array.reshape((camera_data.height, camera_data.width, 3))
-            elif camera_data.encoding == sensors_pb2.MJPEG:
-                img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
-                img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-                if img is None:
-                    print("Failed to decode MJPEG frame")
-                    continue
-                # Convert decoded BGR frame to RGB for viser display
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
-            else:
-                print(f"Unsupported encoding: {camera_data.encoding}")
-                continue
-            
-            # Flip image to correct camera orientation (vertical + horizontal).
-            img_rgb = np.flip(img_rgb, axis=(0, 1)).copy()
+    while not stop_event.is_set():
+        try:
+            for camera_data in stub.getCameraFrame(request):
 
-            # Display the current frame in the GUI rather than attaching it to the 3D scene.
-            if gui_image_handle is None:
-                gui_image_handle = server.gui.add_image(
-                    img_rgb,
-                    label="Camera",
-                    format="jpeg",
+                frame_count += 1
+                print(
+                    f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding}"
                 )
-            else:
-                gui_image_handle.image = img_rgb
-            
-    except grpc.RpcError as exc:
-        print(f"Camera stream error: {exc.code().name} - {exc.details()}")
+
+                # Decode the image data
+                if camera_data.encoding == sensors_pb2.BGR8:
+                    img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                    img = img_array.reshape((camera_data.height, camera_data.width, 3))
+                    # Convert BGR to RGB for viser display
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                elif camera_data.encoding == sensors_pb2.GRAY8:
+                    img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                    img = img_array.reshape((camera_data.height, camera_data.width))
+                    # Convert grayscale to RGB for viser display
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                elif camera_data.encoding == sensors_pb2.RGB8:
+                    img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                    img_rgb = img_array.reshape((camera_data.height, camera_data.width, 3))
+                elif camera_data.encoding == sensors_pb2.MJPEG:
+                    img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
+                    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                    if img is None:
+                        print("Failed to decode MJPEG frame")
+                        continue
+                    # Convert decoded BGR frame to RGB for viser display
+                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                else:
+                    print(f"Unsupported encoding: {camera_data.encoding}")
+                    continue
+
+                # Flip image to correct camera orientation (vertical + horizontal).
+                img_rgb = np.flip(img_rgb, axis=(0, 1)).copy()
+
+                # Display the current frame in the GUI rather than attaching it to the 3D scene.
+                if gui_image_handle is None:
+                    gui_image_handle = server.gui.add_image(
+                        img_rgb,
+                        label="Camera",
+                        format="jpeg",
+                    )
+                else:
+                    gui_image_handle.image = img_rgb
+
+        except grpc.RpcError as exc:
+            print(f"Camera stream error: {exc.code().name} - {exc.details()}")
+
+    time.sleep(1.0)
 
 
 def stream_adc(
@@ -240,6 +247,9 @@ def main():
     server = viser.ViserServer()
     server.scene.world_axes.visible = True
     server.scene.world_axes.axes_length = 1
+    # TODO black BG
+    bg_img = np.ndarray((3, 3, 3))
+    server.scene.set_background_image(image=bg_img)
 
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
