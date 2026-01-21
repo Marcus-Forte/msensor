@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <thread>
@@ -69,8 +70,11 @@ int main(int argc, char **argv) {
   icm20948->init();
   icm20948->calibrate();
 
-  const auto camera =
-      std::make_shared<msensor::OpenCvCamera>(DefaultStreamPipeline);
+  const char *env_pipeline = std::getenv("CAMERA_PIPELINE");
+  const char *pipeline =
+      env_pipeline != nullptr ? env_pipeline : DefaultStreamPipeline;
+  std::cout << "Using camera pipeline: " << pipeline << std::endl;
+  const auto camera = std::make_shared<msensor::OpenCvCamera>(pipeline);
 
   SensorsServer server(ads1115, camera, icm20948, lidar);
   server.start();
