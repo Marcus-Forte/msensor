@@ -14,13 +14,13 @@ from proto_gen import sensors_pb2, sensors_pb2_grpc
 from robot_control import RobotControlHandle, start_robot_control
 
 
-DEFAULT_SERVER_ADDR = "localhost:50051"
+DEFAULT_SERVER_ADDR = "192.168.3.232:50051"
 DEFAULT_ADC_CHANNEL = 0
 DEFAULT_ADC_PERIOD_SEC = 0.5
 
 
 def to_viser_pointcloud_colors(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
-    colors = np.zeros((len(points), 3), dtype=np.uint8)
+    colors = np.empty((len(points), 3), dtype=np.uint8)
     for i, point in enumerate(points):
         rgb = int2rgb(point.intensity)
         colors[i, 0] = rgb[0] * 255
@@ -30,7 +30,7 @@ def to_viser_pointcloud_colors(points: Sequence[sensors_pb2.Point3]) -> np.ndarr
 
 
 def to_viser_pointcloud(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
-    arr = np.zeros((len(points), 3), dtype=np.float32)
+    arr = np.empty((len(points), 3), dtype=np.float32)
     for i, point in enumerate(points):
         arr[i, 0] = point.x
         arr[i, 1] = point.y
@@ -136,7 +136,7 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
     cloud = server.scene.add_point_cloud(
         name="/rplidar",
         points=np.empty((0, 3), dtype=np.float32),
-        colors=(255, 0, 0),
+        colors=np.empty((0, 3), dtype=np.uint8),
         point_size=0.05,
         point_shape="rounded",
     )
@@ -144,6 +144,8 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
     while not stop_event.is_set():
         try:
             for scan in stub.getLidarScan(request):
+                scan: sensors_pb2.PointCloud3
+                
                 print(f"Got points: {len(scan.points)} at {scan.timestamp}")
                 delta_t = scan.timestamp - last_timestamp
                 print(f" DeltaT: {delta_t} ms")
@@ -257,11 +259,11 @@ def main():
     if not any([args.imu, args.lidar, args.camera, args.adc]):
         args.imu = args.lidar = args.camera = args.adc = True
 
-    server = viser.ViserServer()
+    server = viser.ViserServer(port=8081)
     server.scene.world_axes.visible = True
     server.scene.world_axes.axes_length = 1
     # TODO black BG
-    bg_img = np.ndarray((3, 3, 3))
+    bg_img = np.ndarray((1, 3, 3))
     server.scene.set_background_image(image=bg_img)
 
     stop_event = threading.Event()

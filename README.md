@@ -1,11 +1,6 @@
-# The msensor
+# The msensor library
 
 This library serves as an experiment for writing generic sensor drivers based on a simple interface.
-
-By inheriting these common interfaces, the driver benefit from:
-
-* Exposing your driver as a unified gRPC interface to be consumed remotely.
-* Enabling your driver to serialize data to a file to be read back at a later time.
 
 ## Usage
 
@@ -21,8 +16,8 @@ of a driver server to get sensor data.
 
 ### Client
 
-A Python client is provided with the repository to facilitate testing the remote driver.
-See `test/client` folder.
+A Python client is provided with the repository to subscribe to sensor streams.
+See `/client` folder.
 
 ## Docker
 
