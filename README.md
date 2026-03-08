@@ -22,7 +22,7 @@ cd build && ninja && ./src/sim_publisher
 
 ### C++ Remote Client
 
-`SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same (_as if they were_) interfaces as local ones.
+`SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same interfaces as local ones.
 
 ### Python Client
 

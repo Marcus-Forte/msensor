@@ -22,8 +22,8 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
-from . import lidar_pb2 as lidar__pb2
-from . import imu_pb2 as imu__pb2
+import lidar_pb2 as lidar__pb2
+import imu_pb2 as imu__pb2
 
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0frecording.proto\x12\x07sensors\x1a\x0blidar.proto\x1a\timu.proto\"`\n\x0eRecordingEntry\x12$\n\x04scan\x18\x01 \x01(\x0b\x32\x14.sensors.PointCloud3H\x00\x12\x1f\n\x03imu\x18\x02 \x01(\x0b\x32\x10.sensors.IMUDataH\x00\x42\x07\n\x05\x65ntry\"5\n\x0fsaveFileRequest\x12\x15\n\x08\x66ilename\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\x0b\n\t_filenameb\x06proto3')
