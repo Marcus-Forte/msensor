@@ -151,7 +151,7 @@ def stream_lidar(stub: lidar_pb2_grpc.LidarServiceStub, server: viser.ViserServe
         try:
             for scan in stub.getLidarScan(request):
                 scan: lidar_pb2.PointCloud3
-                
+
                 logger.debug(f"Got points: {len(scan.points)} at {scan.timestamp}")
                 delta_t = scan.timestamp - last_timestamp
                 logger.debug(f" DeltaT: {delta_t} ms")
@@ -256,7 +256,12 @@ def parse_args():
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
     parser.add_argument("--adc", action="store_true", help="Poll the ADC")
     parser.add_argument("--adc-channel", type=int, default=DEFAULT_ADC_CHANNEL, help="ADC channel to poll")
-    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level (default: INFO)")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level (default: INFO)",
+    )
     return parser.parse_args()
 
 
