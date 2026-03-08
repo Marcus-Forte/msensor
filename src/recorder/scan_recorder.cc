@@ -1,5 +1,5 @@
 #include "recorder/scan_recorder.hh"
-#include "sensors.pb.h"
+#include "recording.pb.h"
 #include "timing/timing.hh"
 #include <mutex>
 

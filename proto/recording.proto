@@ -1,0 +1,16 @@
+syntax = "proto3";
+import "lidar.proto";
+import "imu.proto";
+
+package sensors;
+
+message RecordingEntry {
+    oneof entry {
+     PointCloud3 scan = 1;
+     IMUData imu = 2;
+    }    
+}
+
+message saveFileRequest {
+    optional string filename = 1;
+}

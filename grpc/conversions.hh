@@ -1,9 +1,11 @@
 #pragma once
 
+#include "camera.pb.h"
+#include "imu.pb.h"
 #include "interface/ICamera.hh"
 #include "interface/IImu.hh"
 #include "interface/ILidar.hh"
-#include "sensors.pb.h"
+#include "lidar.pb.h"
 
 /**
  * @brief Convert a gRPC point cloud message into an msensor point cloud.

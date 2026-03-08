@@ -1,12 +1,12 @@
 # The msensor library
 
-This library serves as an experiment for writing generic sensor drivers based on a simple interface.
+This library serves as an experiment for writing generic sensor drivers based on a (very) simple interface.
 
 ## Usage
 
 ### As an interface
 
-You can inherit basic sensor interfaces located at `include/<sensor_type>/*.hh` and write your own corresponding driver. See `src/<sensor_type>/*.cc` for examples.
+You can inherit basic fundamental sensor interfaces located at `include/<sensor_type>/*.hh` and write your own corresponding driver. See `src/<sensor_type>/*.cc` for examples.
 
 ### Remote Driver
 
@@ -16,7 +16,7 @@ of a driver server to get sensor data.
 
 ### Client
 
-A Python client is provided with the repository to subscribe to sensor streams.
+A Python client is provided with the repository to subscribe to the sensor streams.
 See `/client` folder.
 
 ## Docker

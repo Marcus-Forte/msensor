@@ -16,7 +16,8 @@ SensorsRemoteClient::SensorsRemoteClient(const std::string &remote_ip)
       imu_queue_(g_maxImuSamples) {
 
   channel_ = grpc::CreateChannel(remote_ip, grpc::InsecureChannelCredentials());
-  service_stub_ = sensors::SensorService::NewStub(channel_);
+  lidar_stub_ = sensors::LidarService::NewStub(channel_);
+  imu_stub_ = sensors::ImuService::NewStub(channel_);
 }
 
 void SensorsRemoteClient::init() {}
@@ -51,9 +52,9 @@ void SensorsRemoteClient::start() {
 
   read_thread_ = std::jthread([&](std::stop_token stop_token) {
     auto service_context_ = std::make_unique<grpc::ClientContext>();
-    sensors::SensorStreamRequest request;
+    sensors::LidarStreamRequest request;
 
-    auto reader = service_stub_->getLidarScan(service_context_.get(), request);
+    auto reader = lidar_stub_->getLidarScan(service_context_.get(), request);
 
     sensors::PointCloud3 msg;
 
@@ -63,8 +64,8 @@ void SensorsRemoteClient::start() {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(g_connectionRecoverDelayMs));
         service_context_ = std::make_unique<grpc::ClientContext>();
-        reader = service_stub_->getLidarScan(service_context_.get(),
-                                             request); // retry
+        reader = lidar_stub_->getLidarScan(service_context_.get(),
+                                           request); // retry
       } else {
         scan_queue_.push(fromGRPC(msg));
       }
@@ -73,10 +74,9 @@ void SensorsRemoteClient::start() {
 
   imu_reader_thread_ = std::jthread([&](std::stop_token stop_token) {
     auto service_context_ = std::make_unique<grpc::ClientContext>();
-    sensors::SensorStreamRequest request;
+    sensors::ImuStreamRequest request;
 
-    auto imu_reader =
-        service_stub_->getImuData(service_context_.get(), request);
+    auto imu_reader = imu_stub_->getImuData(service_context_.get(), request);
     sensors::IMUData msg;
 
     while (!stop_token.stop_requested()) {
@@ -86,7 +86,7 @@ void SensorsRemoteClient::start() {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(g_connectionRecoverDelayMs));
         service_context_ = std::make_unique<grpc::ClientContext>();
-        imu_reader = service_stub_->getImuData(service_context_.get(), request);
+        imu_reader = imu_stub_->getImuData(service_context_.get(), request);
       } else {
         imu_queue_.push(fromGRPC(msg));
       }

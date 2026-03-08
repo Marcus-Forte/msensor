@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  std::shared_ptr<RPLidar> lidar = nullptr;
+  std::shared_ptr<msensor::RPLidar> lidar = nullptr;
   if (std::filesystem::exists(lidar_device)) {
     lidar = std::make_shared<msensor::RPLidar>(lidar_device);
     lidar->init();

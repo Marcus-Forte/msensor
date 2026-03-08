@@ -5,9 +5,10 @@
 #include <memory>
 #include <thread>
 
+#include "imu.grpc.pb.h"
 #include "interface/IImu.hh"
 #include "interface/ILidar.hh"
-#include "sensors.grpc.pb.h"
+#include "lidar.grpc.pb.h"
 
 /**
  * @brief This class connects to a SensorService and provides methods to get
@@ -35,7 +36,8 @@ public:
 private:
   std::string remote_ip_;
   std::shared_ptr<grpc::Channel> channel_;
-  std::unique_ptr<sensors::SensorService::Stub> service_stub_;
+  std::unique_ptr<sensors::LidarService::Stub> lidar_stub_;
+  std::unique_ptr<sensors::ImuService::Stub> imu_stub_;
 
   std::jthread read_thread_;
   std::jthread imu_reader_thread_;

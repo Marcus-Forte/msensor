@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package sensors;
+
+message IMUData {
+    float ax = 1;
+    float ay = 2;
+    float az = 3;
+    float gx = 4;
+    float gy = 5;
+    float gz = 6;
+    optional uint64 timestamp = 7;
+}
+
+message ImuStreamRequest {
+}
+
+service ImuService {
+    rpc getImuData(ImuStreamRequest) returns (stream IMUData);
+}

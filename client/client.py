@@ -10,7 +10,10 @@ import numpy as np
 import viser
 import viser.uplot
 
-from proto_gen import sensors_pb2, sensors_pb2_grpc
+from proto_gen import lidar_pb2, lidar_pb2_grpc
+from proto_gen import imu_pb2, imu_pb2_grpc
+from proto_gen import camera_pb2, camera_pb2_grpc
+from proto_gen import adc_pb2, adc_pb2_grpc
 from robot_control import RobotControlHandle, start_robot_control
 
 
@@ -19,7 +22,7 @@ DEFAULT_ADC_CHANNEL = 0
 DEFAULT_ADC_PERIOD_SEC = 0.5
 
 
-def to_viser_pointcloud_colors(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
+def to_viser_pointcloud_colors(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
     colors = np.empty((len(points), 3), dtype=np.uint8)
     for i, point in enumerate(points):
         rgb = int2rgb(point.intensity)
@@ -29,7 +32,7 @@ def to_viser_pointcloud_colors(points: Sequence[sensors_pb2.Point3]) -> np.ndarr
     return colors
 
 
-def to_viser_pointcloud(points: Sequence[sensors_pb2.Point3]) -> np.ndarray:
+def to_viser_pointcloud(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
     arr = np.empty((len(points), 3), dtype=np.float32)
     for i, point in enumerate(points):
         arr[i, 0] = point.x
@@ -107,9 +110,9 @@ def setup_imu_plots(server: viser.ViserServer):
     }
 
 
-def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+def stream_imu(stub: imu_pb2_grpc.ImuServiceStub, server: viser.ViserServer, stop_event: threading.Event):
     context = setup_imu_plots(server)
-    request = sensors_pb2.SensorStreamRequest()
+    request = imu_pb2.ImuStreamRequest()
     sample = 0
 
     while not stop_event.is_set():
@@ -129,8 +132,8 @@ def stream_imu(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServ
         time.sleep(1.0)
 
 
-def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
-    request = sensors_pb2.SensorStreamRequest()
+def stream_lidar(stub: lidar_pb2_grpc.LidarServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+    request = lidar_pb2.LidarStreamRequest()
     last_timestamp = 0
 
     cloud = server.scene.add_point_cloud(
@@ -144,7 +147,7 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
     while not stop_event.is_set():
         try:
             for scan in stub.getLidarScan(request):
-                scan: sensors_pb2.PointCloud3
+                scan: lidar_pb2.PointCloud3
                 
                 print(f"Got points: {len(scan.points)} at {scan.timestamp}")
                 delta_t = scan.timestamp - last_timestamp
@@ -159,8 +162,8 @@ def stream_lidar(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserSe
         time.sleep(1.0)
 
 
-def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserServer, stop_event: threading.Event):
-    request = sensors_pb2.CameraStreamRequest()
+def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+    request = camera_pb2.CameraStreamRequest()
     frame_count = 0
     gui_image_handle: Optional[viser.GuiImageHandle] = None
 
@@ -174,20 +177,20 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
                 )
 
                 # Decode the image data
-                if camera_data.encoding == sensors_pb2.BGR8:
+                if camera_data.encoding == camera_pb2.BGR8:
                     img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                     img = img_array.reshape((camera_data.height, camera_data.width, 3))
                     # Convert BGR to RGB for viser display
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                elif camera_data.encoding == sensors_pb2.GRAY8:
+                elif camera_data.encoding == camera_pb2.GRAY8:
                     img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                     img = img_array.reshape((camera_data.height, camera_data.width))
                     # Convert grayscale to RGB for viser display
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-                elif camera_data.encoding == sensors_pb2.RGB8:
+                elif camera_data.encoding == camera_pb2.RGB8:
                     img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                     img_rgb = img_array.reshape((camera_data.height, camera_data.width, 3))
-                elif camera_data.encoding == sensors_pb2.MJPEG:
+                elif camera_data.encoding == camera_pb2.MJPEG:
                     img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
                     if img is None:
@@ -220,12 +223,12 @@ def stream_camera(stub: sensors_pb2_grpc.SensorServiceStub, server: viser.ViserS
 
 
 def stream_adc(
-    stub: sensors_pb2_grpc.SensorServiceStub,
+    stub: adc_pb2_grpc.AdcServiceStub,
     stop_event: threading.Event,
     channel: int,
     battery_level_handle: viser.GuiNumberHandle,
 ):
-    request = sensors_pb2.AdcDataRequest(channel=channel)
+    request = adc_pb2.AdcDataRequest(channel=channel)
     period_sec = DEFAULT_ADC_PERIOD_SEC
     print(f"Polling ADC channel {channel} every {period_sec}s. Press Ctrl+C to stop.")
     while not stop_event.is_set():
@@ -277,33 +280,36 @@ def main():
         threads.append(robot_handle.thread)
 
     with grpc.insecure_channel(args.server) as channel:
-        stub = sensors_pb2_grpc.SensorServiceStub(channel)
+        lidar_stub = lidar_pb2_grpc.LidarServiceStub(channel)
+        imu_stub = imu_pb2_grpc.ImuServiceStub(channel)
+        camera_stub = camera_pb2_grpc.CameraServiceStub(channel)
+        adc_stub = adc_pb2_grpc.AdcServiceStub(channel)
 
         if args.imu:
             if server is None:
                 raise RuntimeError("IMU visualization requires viser to be available.")
-            t = threading.Thread(target=stream_imu, args=(stub, server, stop_event), name="imu-thread")
+            t = threading.Thread(target=stream_imu, args=(imu_stub, server, stop_event), name="imu-thread")
             t.start()
             threads.append(t)
 
         if args.lidar:
             if server is None:
                 raise RuntimeError("LiDAR visualization requires viser to be available.")
-            t = threading.Thread(target=stream_lidar, args=(stub, server, stop_event), name="lidar-thread")
+            t = threading.Thread(target=stream_lidar, args=(lidar_stub, server, stop_event), name="lidar-thread")
             t.start()
             threads.append(t)
 
         if args.camera:
             if server is None:
                 raise RuntimeError("Camera visualization requires viser to be available.")
-            t = threading.Thread(target=stream_camera, args=(stub, server, stop_event), name="camera-thread")
+            t = threading.Thread(target=stream_camera, args=(camera_stub, server, stop_event), name="camera-thread")
             t.start()
             threads.append(t)
 
         if args.adc:
             t = threading.Thread(
                 target=stream_adc,
-                args=(stub, stop_event, args.adc_channel, battery_level_handle),
+                args=(adc_stub, stop_event, args.adc_channel, battery_level_handle),
                 name="adc-thread",
             )
             t.start()

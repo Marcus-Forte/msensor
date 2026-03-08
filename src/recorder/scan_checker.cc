@@ -1,5 +1,5 @@
 #include "recorder/scan_player.hh"
-#include "sensors.pb.h"
+#include "recording.pb.h"
 #include <filesystem>
 #include <getopt.h>
 #include <iostream>

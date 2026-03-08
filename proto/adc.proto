@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sensors;
+
+message AdcDataRequest {
+    optional uint32 channel = 1;
+}
+
+message AdcData {
+    float sample = 1;
+    optional uint64 timestamp = 2;
+}
+
+service AdcService {
+    rpc getAdcData(AdcDataRequest) returns (AdcData);
+}

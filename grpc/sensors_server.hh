@@ -3,7 +3,10 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/server_builder.h>
 
-#include "sensors_service.hh"
+#include "adc_service.hh"
+#include "camera_service.hh"
+#include "imu_service.hh"
+#include "lidar_service.hh"
 
 /**
  * @brief This class manages the gRPC server and provides methods to publish
@@ -12,15 +15,18 @@
  */
 class SensorsServer {
 public:
-  SensorsServer(std::shared_ptr<IAdc> adc = nullptr,
-                std::shared_ptr<ICamera> camera = nullptr,
-                std::shared_ptr<IImu> imu = nullptr,
-                std::shared_ptr<ILidar> lidar = nullptr);
+  SensorsServer(std::shared_ptr<msensor::IAdc> adc = nullptr,
+                std::shared_ptr<msensor::ICamera> camera = nullptr,
+                std::shared_ptr<msensor::IImu> imu = nullptr,
+                std::shared_ptr<msensor::ILidar> lidar = nullptr);
 
   void start();
   void stop();
 
 private:
-  ScanService scan_service_;
+  LidarServiceImpl lidar_service_;
+  ImuServiceImpl imu_service_;
+  CameraServiceImpl camera_service_;
+  AdcServiceImpl adc_service_;
   std::unique_ptr<grpc::Server> server_;
 };

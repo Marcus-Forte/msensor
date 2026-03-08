@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include <sensors.pb.h>
+#include <recording.pb.h>
 
 namespace msensor {
 
