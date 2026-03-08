@@ -1,23 +1,41 @@
 # The msensor library
 
-This library serves as an experiment for writing generic sensor drivers based on a (very) simple interface.
+A modular sensor driver framework that exposes hardware sensors over gRPC. Each sensor type has its own service, proto definition, and abstract interface — drivers are injected into services so the gRPC layer is decoupled from any specific hardware.
+
+See `docs/arch.puml` for a PlantUML diagram.
 
 ## Usage
 
-### As an interface
+### Interfaces
 
-You can inherit basic fundamental sensor interfaces located at `include/<sensor_type>/*.hh` and write your own corresponding driver. See `src/<sensor_type>/*.cc` for examples.
+Inherit the abstract interfaces in `include/interface/` and implement your own driver.  
+See `src/<sensor_type>/` for examples.
 
-### Remote Driver
+### Server
 
-* Your driver can be programmed as a gRPC service. See `src/*_publisher` applications as example.
-* A client (at another machine) application can instantiate a `grpc/sensors_remote_client.hh` class and subscribe to the IP
-of a driver server to get sensor data.
+Publisher executables (e.g. `all_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**.
 
-### Client
+```bash
+# Build and run the simulated sensor publisher
+cd build && ninja && ./src/sim_publisher
+```
 
-A Python client is provided with the repository to subscribe to the sensor streams.
-See `/client` folder.
+### C++ Remote Client
+
+`SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same (_as if they were_) interfaces as local ones.
+
+### Python Client
+
+A Python client is provided in `client/`. It connects to the gRPC services and renders data with [viser](https://viser.studio).
+
+```bash
+cd client
+uv run client.py --server <host>:50051    # all streams
+uv run client.py --lidar                  # lidar only
+uv run client.py --imu --camera           # pick streams
+```
+
+See `client/README.md` for proto regeneration instructions.
 
 ## Docker
 

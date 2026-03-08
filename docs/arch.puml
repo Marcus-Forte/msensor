@@ -1,61 +1,56 @@
 @startuml Architecture
-' !pragma layout smetana
 
-file "Proto Definitions \n(proto)" <<file>> {
-interface Services {
-    +getScan()
-    +getImu()
-    +getAdc()
-}
+skinparam packageStyle rectangle
+
+package "Proto Definitions (proto/)" as P {
 }
 
-component "Sensor Server" as Server {
- abstract SensorService <<generated>> {
-    +getScan()
-     +getImu()
-     +getAdc()
-
- }
-
- class SensorServiceImpl {
-     +getScan()
-     +getImu()
-     +getAdc()
- }
-
- class "SensorDriver" as SensorDriver {
-    +getScan()
-     +getImu()
-     +getAdc()
- }
-
- SensorDriver <- SensorServiceImpl: uses
- SensorService <|.. SensorServiceImpl: implements
- Services --> SensorService: generates
+package "gRPC Services (grpc/)" as S {
+    class LidarServiceImpl {
+        -lidar : ILidar
+    }
+    class ImuServiceImpl {
+        -imu : IImu
+    }
+    class CameraServiceImpl {
+        -camera : ICamera
+    }
+    class AdcServiceImpl {
+        -adc : IAdc
+    }
 }
 
-component "Client" as Client {
-    abstract "SensorService" as SensorServiceClient <<generated>> {
-    +getScan()
-    +getImu()
-    +getAdc()
+package "Sensor Interfaces (include/interface/)" as I {
+    interface ILidar
+    interface IImu
+    interface ICamera
+    interface IAdc
+}
 
- }
+package "Sensor Drivers (src/)" as D {
+    class RPLidar
+    class Mid360
+    class ICM20948
+    class OpenCvCamera
+    class ADS1115
+}
 
- class "SensorServiceImpl" as SensorServiceImplClient {
-     +getScan()
-     +getImu()
-     +getAdc()
- }
+' Proto generates services
+P ..> S : generates
 
+' Services depend on Interfaces (dependency injection)
+LidarServiceImpl o-- ILidar
+ImuServiceImpl o-- IImu
+CameraServiceImpl o-- ICamera
+AdcServiceImpl o-- IAdc
 
- SensorServiceClient <|.. SensorServiceImplClient: implements
+' Force Drivers below Interfaces
+I -down[hidden]- D
 
-  Services --> SensorServiceClient: generates
-} 
-
-interface "gRPC" as gRPC
-
-Server -- gRPC
-gRPC - Client : "   "
+' Drivers implement Interfaces
+RPLidar .up.|> ILidar
+Mid360 .up.|> ILidar
+ICM20948 .up.|> IImu
+OpenCvCamera .up.|> ICamera
+ADS1115 .up.|> IAdc
 @enduml
