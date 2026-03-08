@@ -1,8 +1,11 @@
 import argparse
+import logging
 import threading
 import time
 from typing import Optional, Sequence
 from colormap import int2rgb
+
+logger = logging.getLogger(__name__)
 
 import cv2
 import grpc
@@ -127,7 +130,7 @@ def stream_imu(stub: imu_pb2_grpc.ImuServiceStub, server: viser.ViserServer, sto
                 context["y_gyr"][:, sample % context["num_timesteps"]] = (imu.gx, imu.gy, imu.gz)
                 context["uplot_handles"][1].data = (context["x_data"], *context["y_gyr"])
         except grpc.RpcError as exc:
-            print(f"IMU stream error: {exc.code().name} - {exc.details()}")
+            logger.info(f"IMU stream error: {exc.code().name} - {exc.details()}")
 
         time.sleep(1.0)
 
@@ -149,15 +152,15 @@ def stream_lidar(stub: lidar_pb2_grpc.LidarServiceStub, server: viser.ViserServe
             for scan in stub.getLidarScan(request):
                 scan: lidar_pb2.PointCloud3
                 
-                print(f"Got points: {len(scan.points)} at {scan.timestamp}")
+                logger.debug(f"Got points: {len(scan.points)} at {scan.timestamp}")
                 delta_t = scan.timestamp - last_timestamp
-                print(f" DeltaT: {delta_t} ms")
+                logger.debug(f" DeltaT: {delta_t} ms")
                 last_timestamp = scan.timestamp
                 cloud.points = to_viser_pointcloud(scan.points)
                 cloud.colors = to_viser_pointcloud_colors(scan.points)
 
         except grpc.RpcError as exc:
-            print(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
+            logger.info(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
 
         time.sleep(1.0)
 
@@ -172,7 +175,7 @@ def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserSe
             for camera_data in stub.getCameraFrame(request):
 
                 frame_count += 1
-                print(
+                logger.debug(
                     f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.timestamp}"
                 )
 
@@ -194,13 +197,13 @@ def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserSe
                     img_array = np.frombuffer(camera_data.image_data, dtype=np.uint8)
                     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
                     if img is None:
-                        print("Failed to decode MJPEG frame")
+                        logger.debug("Failed to decode MJPEG frame")
                         continue
                     # Convert decoded BGR frame to RGB for viser display
                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
                 else:
-                    print(f"Unsupported encoding: {camera_data.encoding}")
+                    logger.warning(f"Unsupported encoding: {camera_data.encoding}")
                     continue
 
                 # Flip image to correct camera orientation (vertical + horizontal).
@@ -217,7 +220,7 @@ def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserSe
                     gui_image_handle.image = img_rgb
 
         except grpc.RpcError as exc:
-            print(f"Camera stream error: {exc.code().name} - {exc.details()}")
+            logger.info(f"Camera stream error: {exc.code().name} - {exc.details()}")
 
         time.sleep(1.0)
 
@@ -230,14 +233,14 @@ def stream_adc(
 ):
     request = adc_pb2.AdcDataRequest(channel=channel)
     period_sec = DEFAULT_ADC_PERIOD_SEC
-    print(f"Polling ADC channel {channel} every {period_sec}s. Press Ctrl+C to stop.")
+    logger.info(f"Polling ADC channel {channel} every {period_sec}s")
     while not stop_event.is_set():
         try:
             resp = stub.getAdcData(request)
-            print(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
+            logger.debug(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
             battery_level_handle.value = resp.sample
         except grpc.RpcError as exc:
-            print(f"ADC error: {exc.code().name} - {exc.details()}")
+            logger.info(f"ADC error: {exc.code().name} - {exc.details()}")
         stop_event.wait(period_sec)
 
 
@@ -253,11 +256,16 @@ def parse_args():
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
     parser.add_argument("--adc", action="store_true", help="Poll the ADC")
     parser.add_argument("--adc-channel", type=int, default=DEFAULT_ADC_CHANNEL, help="ADC channel to poll")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level (default: INFO)")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    )
 
     if not any([args.imu, args.lidar, args.camera, args.adc]):
         args.imu = args.lidar = args.camera = args.adc = True
@@ -279,6 +287,7 @@ def main():
         robot_handle = start_robot_control(server, args.robot_server, stop_event)
         threads.append(robot_handle.thread)
 
+    logger.info(f"Connecting to sensor server at {args.server}")
     with grpc.insecure_channel(args.server) as channel:
         lidar_stub = lidar_pb2_grpc.LidarServiceStub(channel)
         imu_stub = imu_pb2_grpc.ImuServiceStub(channel)
@@ -288,6 +297,7 @@ def main():
         if args.imu:
             if server is None:
                 raise RuntimeError("IMU visualization requires viser to be available.")
+            logger.info("Starting IMU stream")
             t = threading.Thread(target=stream_imu, args=(imu_stub, server, stop_event), name="imu-thread")
             t.start()
             threads.append(t)
@@ -295,6 +305,7 @@ def main():
         if args.lidar:
             if server is None:
                 raise RuntimeError("LiDAR visualization requires viser to be available.")
+            logger.info("Starting LiDAR stream")
             t = threading.Thread(target=stream_lidar, args=(lidar_stub, server, stop_event), name="lidar-thread")
             t.start()
             threads.append(t)
@@ -302,11 +313,13 @@ def main():
         if args.camera:
             if server is None:
                 raise RuntimeError("Camera visualization requires viser to be available.")
+            logger.info("Starting camera stream")
             t = threading.Thread(target=stream_camera, args=(camera_stub, server, stop_event), name="camera-thread")
             t.start()
             threads.append(t)
 
         if args.adc:
+            logger.info(f"Starting ADC polling on channel {args.adc_channel}")
             t = threading.Thread(
                 target=stream_adc,
                 args=(adc_stub, stop_event, args.adc_channel, battery_level_handle),
@@ -320,7 +333,7 @@ def main():
                 for t in threads:
                     t.join(timeout=0.5)
         except KeyboardInterrupt:
-            print("\nStopping sensor subscriptions...")
+            logger.info("Stopping sensor subscriptions...")
             stop_event.set()
 
     for t in threads:
