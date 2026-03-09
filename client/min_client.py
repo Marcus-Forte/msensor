@@ -19,7 +19,8 @@ from proto_gen import (
 )
 
 
-DEFAULT_SERVER_ADDR = "127.0.0.1:50051"
+# SERVER_ADDR = "127.0.0.1:50051" # dev container
+SERVER_ADDR = "192.168.178.129:50051" # Robot
 
 
 def _to_viser_pointcloud_colors(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
@@ -96,26 +97,27 @@ def main():
     # Start the Viser server and create a point cloud object to hold the LiDAR data
     server = viser.ViserServer(port=8081)
 
+    # Add a mock point cloud
+
+    points = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]], dtype=np.float32)
+    colors = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
+
+    cloud = server.scene.add_point_cloud(
+        name="/lidar",
+        points=points,
+        colors=colors,
+        point_size=0.05,
+        point_shape="rounded",
+    )
+
+
     while True:
         time.sleep(1.0)
 
-    # Add a mock point cloud
+    ## Stream Pointclouds
 
-    # points = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]], dtype=np.float32)
-    # colors = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
-
-    # cloud = server.scene.add_point_cloud(
-    #     name="/lidar",
-    #     points=points,
-    #     colors=colors,
-    #     point_size=0.15,
-    #     point_shape="rounded",
-    # )
-
-    # Stream Pointclouds
-
-    # print(f"Connecting to gRPC server: {DEFAULT_SERVER_ADDR}")
-    # with grpc.insecure_channel(DEFAULT_SERVER_ADDR) as channel:
+    # print(f"Connecting to gRPC server: {SERVER_ADDR}")
+    # with grpc.insecure_channel(SERVER_ADDR) as channel:
     #     request = lidar_pb2.LidarStreamRequest()
     #     last_timestamp: int | None = None
 
@@ -136,9 +138,9 @@ def main():
     #         cloud.points = _to_viser_pointcloud(scan.points)
     #         cloud.colors = _to_viser_pointcloud_colors(scan.points)
 
-    # Stream Camera Frames
+    ## Stream Camera Frames
 
-    # with grpc.insecure_channel(DEFAULT_SERVER_ADDR) as channel:
+    # with grpc.insecure_channel(SERVER_ADDR) as channel:
     #     stub = camera_pb2_grpc.CameraServiceStub(channel)
     #     gui_image_handle: Optional[viser.GuiImageHandle] = None
 
@@ -161,11 +163,11 @@ def main():
     #         else:
     #             gui_image_handle.image = img_rgb
 
-    # Stream IMU data
+    ## Stream IMU data
 
-    # print(f"Connecting to gRPC server: {DEFAULT_SERVER_ADDR}")
+    # print(f"Connecting to gRPC server: {SERVER_ADDR}")
     # x_data, y_acc, acc_plot = _setup_imu_plots(server)
-    # with grpc.insecure_channel(DEFAULT_SERVER_ADDR) as channel:
+    # with grpc.insecure_channel(SERVER_ADDR) as channel:
     #     stub = imu_pb2_grpc.ImuServiceStub(channel)
     #     request = imu_pb2.ImuStreamRequest()
     #     sample = 0
@@ -183,17 +185,16 @@ def main():
     #             f"acc=({imu.ax:.3f}, {imu.ay:.3f}, {imu.az:.3f})"
     #         )
 
-    # Voxel size slider → drives the bidi stream requests
+    ## Voxel size slider → drives the bidi stream requests
 
     # voxel_queue: queue.Queue[float] = queue.Queue()
-    # voxel_queue.put(1.0)  # initial request
 
     # demo_slider = server.gui.add_slider(
     #     "Voxel Size",
     #     min=0.1,
-    #     max=10.0,
-    #     step=0.1,
-    #     initial_value=1.0,
+    #     max=10,
+    #     step=0.05,
+    #     initial_value=0.1,
     #     hint="Voxel size sent to the subsampled LiDAR stream.",
     # )
 
@@ -204,15 +205,15 @@ def main():
 
     # demo_slider.on_update(handle_demo_slider_update)
 
-    # Stream Subsampled Pointclouds
+    # # Stream Subsampled Pointclouds
 
     # def request_iterator():
     #     while True:
     #         voxel_size = voxel_queue.get()  # blocks until a value is available
     #         yield lidar_pb2.SubSampledLidarStreamRequest(voxel_size=voxel_size)
 
-    # print(f"Connecting to gRPC server: {DEFAULT_SERVER_ADDR}")
-    # with grpc.insecure_channel(DEFAULT_SERVER_ADDR) as channel:
+    # print(f"Connecting to gRPC server: {SERVER_ADDR}")
+    # with grpc.insecure_channel(SERVER_ADDR) as channel:
     #     last_timestamp: int | None = None
 
     #     stub = lidar_pb2_grpc.LidarServiceStub(channel)

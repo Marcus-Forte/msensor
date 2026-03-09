@@ -15,11 +15,6 @@ See `src/<sensor_type>/` for examples.
 
 Publisher executables (e.g. `all_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**.
 
-```bash
-# Build and run the simulated sensor publisher
-cd build && ninja && ./src/sim_publisher
-```
-
 ### C++ Remote Client
 
 `SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same interfaces as local ones.

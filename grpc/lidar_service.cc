@@ -14,7 +14,7 @@ LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
 class LidarScanReactor : public grpc::ServerWriteReactor<sensors::PointCloud3> {
 public:
   LidarScanReactor(std::shared_ptr<msensor::ILidar> lidar)
-      : lidar_(std::move(lidar)) {
+      : lidar_(lidar) {
     std::cout << "Start Lidar scan stream." << std::endl;
     NextWrite();
   }
@@ -35,10 +35,13 @@ public:
 
 private:
   void NextWrite() {
-    if (auto scan = lidar_->getScan()) {
-      response_ = toGRPC(scan);
-      StartWrite(&response_);
+    const auto scan = lidar_->getScan();
+    if (!scan) {
+      NextWrite();
+      return;
     }
+    response_ = toGRPC(scan);
+    StartWrite(&response_);
   }
 
   std::shared_ptr<msensor::ILidar> lidar_;
@@ -70,7 +73,7 @@ class SubSampledLidarReactor
                                      sensors::PointCloud3> {
 public:
   SubSampledLidarReactor(std::shared_ptr<msensor::ILidar> lidar)
-      : lidar_(std::move(lidar)) {
+      : lidar_(lidar) {
     std::cout << "Start subsampled Lidar scan stream." << std::endl;
     StartRead(&request_);  // start listening for client messages
     NextWrite();            // start pushing scans immediately
@@ -101,17 +104,21 @@ public:
 
 private:
   void NextWrite() {
-    if (auto scan = lidar_->getScan()) {
-      float vs = voxel_size_.load();
-      pcl::VoxelGrid<msensor::Point3I> grid;
-      grid.setInputCloud(scan->points);
-      grid.setLeafSize(vs, vs, vs);
-      auto filtered = std::make_shared<msensor::Scan3DI>();
-      filtered->timestamp = timing::getNowUs();
-      grid.filter(*filtered->points);
-      response_ = toGRPC(filtered);
-      StartWrite(&response_);
+    const auto scan = lidar_->getScan();
+    if (!scan) {
+      // Scan failed - retry immediately (getScan has its own timeout)
+      NextWrite();
+      return;
     }
+    float vs = voxel_size_.load();
+    pcl::VoxelGrid<msensor::Point3I> grid;
+    grid.setInputCloud(scan->points);
+    grid.setLeafSize(vs, vs, vs);
+    auto filtered = std::make_shared<msensor::Scan3DI>();
+    filtered->timestamp = timing::getNowUs();
+    grid.filter(*filtered->points);
+    response_ = toGRPC(filtered);
+    StartWrite(&response_);
   }
 
   std::shared_ptr<msensor::ILidar> lidar_;
