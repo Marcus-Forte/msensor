@@ -15,6 +15,8 @@ public:
                const ::sensors::LidarStreamRequest *request,
                ::grpc::ServerWriter<sensors::PointCloud3> *writer) override;
 
+  ::grpc::Status getSubSampledLidarScan(::grpc::ServerContext* context, ::grpc::ServerReaderWriter< ::sensors::PointCloud3, ::sensors::SubSampledLidarStreamRequest>* stream) override;
+
 private:
   std::shared_ptr<msensor::ILidar> lidar_;
 };

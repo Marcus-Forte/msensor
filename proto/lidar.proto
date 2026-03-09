@@ -20,6 +20,11 @@ message PointCloud3 {
 message LidarStreamRequest {
 }
 
+message SubSampledLidarStreamRequest {
+        float voxel_size = 1;
+}
+
 service LidarService {
     rpc getLidarScan(LidarStreamRequest) returns (stream PointCloud3);
+    rpc getSubSampledLidarScan(stream SubSampledLidarStreamRequest) returns (stream PointCloud3);
 }

@@ -5,7 +5,7 @@ import warnings
 
 import lidar_pb2 as lidar__pb2
 
-GRPC_GENERATED_VERSION = '1.71.0'
+GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in lidar_pb2_grpc.py depends on'
+        + ' but the generated code in lidar_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -39,6 +39,11 @@ class LidarServiceStub(object):
                 request_serializer=lidar__pb2.LidarStreamRequest.SerializeToString,
                 response_deserializer=lidar__pb2.PointCloud3.FromString,
                 _registered_method=True)
+        self.getSubSampledLidarScan = channel.stream_stream(
+                '/sensors.LidarService/getSubSampledLidarScan',
+                request_serializer=lidar__pb2.SubSampledLidarStreamRequest.SerializeToString,
+                response_deserializer=lidar__pb2.PointCloud3.FromString,
+                _registered_method=True)
 
 
 class LidarServiceServicer(object):
@@ -50,12 +55,23 @@ class LidarServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def getSubSampledLidarScan(self, request_iterator, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LidarServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'getLidarScan': grpc.unary_stream_rpc_method_handler(
                     servicer.getLidarScan,
                     request_deserializer=lidar__pb2.LidarStreamRequest.FromString,
+                    response_serializer=lidar__pb2.PointCloud3.SerializeToString,
+            ),
+            'getSubSampledLidarScan': grpc.stream_stream_rpc_method_handler(
+                    servicer.getSubSampledLidarScan,
+                    request_deserializer=lidar__pb2.SubSampledLidarStreamRequest.FromString,
                     response_serializer=lidar__pb2.PointCloud3.SerializeToString,
             ),
     }
@@ -85,6 +101,33 @@ class LidarService(object):
             target,
             '/sensors.LidarService/getLidarScan',
             lidar__pb2.LidarStreamRequest.SerializeToString,
+            lidar__pb2.PointCloud3.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def getSubSampledLidarScan(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(
+            request_iterator,
+            target,
+            '/sensors.LidarService/getSubSampledLidarScan',
+            lidar__pb2.SubSampledLidarStreamRequest.SerializeToString,
             lidar__pb2.PointCloud3.FromString,
             options,
             channel_credentials,

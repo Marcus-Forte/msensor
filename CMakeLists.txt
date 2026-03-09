@@ -3,7 +3,7 @@ project(msensor)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-find_package(PCL 1.15.1 REQUIRED COMPONENTS common io) # for point types, point cloud serialization
+find_package(PCL 1.15.1 REQUIRED COMPONENTS common io filters) # for point types, point cloud serialization
 find_package(OpenCV 4.10 REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)

@@ -1,7 +1,8 @@
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -34,3 +35,9 @@ class PointCloud3(_message.Message):
 class LidarStreamRequest(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class SubSampledLidarStreamRequest(_message.Message):
+    __slots__ = ("voxel_size",)
+    VOXEL_SIZE_FIELD_NUMBER: _ClassVar[int]
+    voxel_size: float
+    def __init__(self, voxel_size: _Optional[float] = ...) -> None: ...

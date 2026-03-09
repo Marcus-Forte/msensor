@@ -2,6 +2,7 @@ from colormap import int2rgb
 
 import cv2
 import grpc
+import queue
 import time
 import numpy as np
 import viser
@@ -88,8 +89,8 @@ def main():
     # Start the Viser server and create a point cloud object to hold the LiDAR data
     server = viser.ViserServer(port=8081)
 
-    while True:
-        time.sleep(1.0)
+    # while True:
+    #     time.sleep(1.0)
 
     # Add a mock point cloud
 
@@ -175,21 +176,58 @@ def main():
     #             f"acc=({imu.ax:.3f}, {imu.ay:.3f}, {imu.az:.3f})"
     #         )
 
-    # Slider
+    # Voxel size slider → drives the bidi stream requests
+
+    voxel_queue: queue.Queue[float] = queue.Queue()
+    voxel_queue.put(2.0)  # initial request
 
     demo_slider = server.gui.add_slider(
-        "Demo Slider",
-        min=0,
-        max=100,
-        step=1,
-        initial_value=50,
-        hint="Example GUI slider in the minimal client.",
+        "Voxel Size",
+        min=0.1,
+        max=5.0,
+        step=0.1,
+        initial_value=2.0,
+        hint="Voxel size sent to the subsampled LiDAR stream.",
     )
 
     def handle_demo_slider_update(event: viser.GuiEvent):
-        print(f"Demo slider changed: {event.target.value}")
+        voxel_size = float(event.target.value)
+        voxel_queue.put(voxel_size)
+        print(f"Voxel size changed: {voxel_size:.1f}")
 
     demo_slider.on_update(handle_demo_slider_update)
+
+    # Stream Subsampled Pointclouds
+
+    def request_iterator():
+        voxel_size = voxel_queue.get()  # block for the first value
+        while True:
+            yield lidar_pb2.SubSampledLidarStreamRequest(voxel_size=voxel_size)
+            try:
+                voxel_size = voxel_queue.get(timeout=0.1)
+            except queue.Empty:
+                pass
+
+    print(f"Connecting to gRPC server: {DEFAULT_SERVER_ADDR}")
+    with grpc.insecure_channel(DEFAULT_SERVER_ADDR) as channel:
+        last_timestamp: int | None = None
+
+        stub = lidar_pb2_grpc.LidarServiceStub(channel)
+
+        for scan in stub.getSubSampledLidarScan(request_iterator()):
+            scan: lidar_pb2.PointCloud3
+
+            ts = int(scan.timestamp) if scan.HasField("timestamp") else 0
+            n = len(scan.points)
+            if last_timestamp is None:
+                dt_ms = 0
+            else:
+                dt_ms = ts - last_timestamp
+            last_timestamp = ts
+
+            print(f"LiDAR scan: points={n} timestamp={ts} dt={dt_ms}ms")
+            cloud.points = _to_viser_pointcloud(scan.points)
+            cloud.colors = _to_viser_pointcloud_colors(scan.points)
 
 
 if __name__ == "__main__":
