@@ -113,7 +113,11 @@ def setup_imu_plots(server: viser.ViserServer):
     }
 
 
-def stream_imu(stub: imu_pb2_grpc.ImuServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+def stream_imu(
+    stub: imu_pb2_grpc.ImuServiceStub,
+    server: viser.ViserServer,
+    stop_event: threading.Event,
+):
     context = setup_imu_plots(server)
     request = imu_pb2.ImuStreamRequest()
     sample = 0
@@ -124,18 +128,36 @@ def stream_imu(stub: imu_pb2_grpc.ImuServiceStub, server: viser.ViserServer, sto
                 if stop_event.is_set():
                     break
                 sample += 1
-                context["y_acc"][:, sample % context["num_timesteps"]] = (imu.ax, imu.ay, imu.az)
-                context["uplot_handles"][0].data = (context["x_data"], *context["y_acc"])
+                context["y_acc"][:, sample % context["num_timesteps"]] = (
+                    imu.ax,
+                    imu.ay,
+                    imu.az,
+                )
+                context["uplot_handles"][0].data = (
+                    context["x_data"],
+                    *context["y_acc"],
+                )
 
-                context["y_gyr"][:, sample % context["num_timesteps"]] = (imu.gx, imu.gy, imu.gz)
-                context["uplot_handles"][1].data = (context["x_data"], *context["y_gyr"])
+                context["y_gyr"][:, sample % context["num_timesteps"]] = (
+                    imu.gx,
+                    imu.gy,
+                    imu.gz,
+                )
+                context["uplot_handles"][1].data = (
+                    context["x_data"],
+                    *context["y_gyr"],
+                )
         except grpc.RpcError as exc:
             logger.info(f"IMU stream error: {exc.code().name} - {exc.details()}")
 
         time.sleep(1.0)
 
 
-def stream_lidar(stub: lidar_pb2_grpc.LidarServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+def stream_lidar(
+    stub: lidar_pb2_grpc.LidarServiceStub,
+    server: viser.ViserServer,
+    stop_event: threading.Event,
+):
     request = lidar_pb2.LidarStreamRequest()
     last_timestamp = 0
 
@@ -165,7 +187,11 @@ def stream_lidar(stub: lidar_pb2_grpc.LidarServiceStub, server: viser.ViserServe
         time.sleep(1.0)
 
 
-def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserServer, stop_event: threading.Event):
+def stream_camera(
+    stub: camera_pb2_grpc.CameraServiceStub,
+    server: viser.ViserServer,
+    stop_event: threading.Event,
+):
     request = camera_pb2.CameraStreamRequest()
     frame_count = 0
     gui_image_handle: Optional[viser.GuiImageHandle] = None
@@ -173,7 +199,6 @@ def stream_camera(stub: camera_pb2_grpc.CameraServiceStub, server: viser.ViserSe
     while not stop_event.is_set():
         try:
             for camera_data in stub.getCameraFrame(request):
-
                 frame_count += 1
                 logger.debug(
                     f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.timestamp}"
@@ -255,7 +280,12 @@ def parse_args():
     parser.add_argument("--lidar", action="store_true", help="Subscribe to the LiDAR stream")
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
     parser.add_argument("--adc", action="store_true", help="Poll the ADC")
-    parser.add_argument("--adc-channel", type=int, default=DEFAULT_ADC_CHANNEL, help="ADC channel to poll")
+    parser.add_argument(
+        "--adc-channel",
+        type=int,
+        default=DEFAULT_ADC_CHANNEL,
+        help="ADC channel to poll",
+    )
     parser.add_argument(
         "--log-level",
         default="INFO",
@@ -303,7 +333,11 @@ def main():
             if server is None:
                 raise RuntimeError("IMU visualization requires viser to be available.")
             logger.info("Starting IMU stream")
-            t = threading.Thread(target=stream_imu, args=(imu_stub, server, stop_event), name="imu-thread")
+            t = threading.Thread(
+                target=stream_imu,
+                args=(imu_stub, server, stop_event),
+                name="imu-thread",
+            )
             t.start()
             threads.append(t)
 
@@ -311,7 +345,11 @@ def main():
             if server is None:
                 raise RuntimeError("LiDAR visualization requires viser to be available.")
             logger.info("Starting LiDAR stream")
-            t = threading.Thread(target=stream_lidar, args=(lidar_stub, server, stop_event), name="lidar-thread")
+            t = threading.Thread(
+                target=stream_lidar,
+                args=(lidar_stub, server, stop_event),
+                name="lidar-thread",
+            )
             t.start()
             threads.append(t)
 
@@ -319,7 +357,11 @@ def main():
             if server is None:
                 raise RuntimeError("Camera visualization requires viser to be available.")
             logger.info("Starting camera stream")
-            t = threading.Thread(target=stream_camera, args=(camera_stub, server, stop_event), name="camera-thread")
+            t = threading.Thread(
+                target=stream_camera,
+                args=(camera_stub, server, stop_event),
+                name="camera-thread",
+            )
             t.start()
             threads.append(t)
 

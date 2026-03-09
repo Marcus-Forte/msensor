@@ -4,18 +4,22 @@
 #include "lidar.grpc.pb.h"
 
 /**
- * @brief Implements the LiDAR gRPC service.
+ * @brief Implements the LiDAR gRPC service using the callback API.
+ *
+ * CallbackService provides reactor-based async handling, allowing
+ * independent reads and writes on bidirectional streams without threads.
  */
-class LidarServiceImpl : public sensors::LidarService::Service {
+class LidarServiceImpl : public sensors::LidarService::CallbackService {
 public:
   LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar);
 
-  ::grpc::Status
-  getLidarScan(::grpc::ServerContext *context,
-               const ::sensors::LidarStreamRequest *request,
-               ::grpc::ServerWriter<sensors::PointCloud3> *writer) override;
+  grpc::ServerWriteReactor<sensors::PointCloud3> *
+  getLidarScan(grpc::CallbackServerContext *context,
+               const sensors::LidarStreamRequest *request) override;
 
-  ::grpc::Status getSubSampledLidarScan(::grpc::ServerContext* context, ::grpc::ServerReaderWriter< ::sensors::PointCloud3, ::sensors::SubSampledLidarStreamRequest>* stream) override;
+  grpc::ServerBidiReactor<sensors::SubSampledLidarStreamRequest,
+                          sensors::PointCloud3> *
+  getSubSampledLidarScan(grpc::CallbackServerContext *context) override;
 
 private:
   std::shared_ptr<msensor::ILidar> lidar_;

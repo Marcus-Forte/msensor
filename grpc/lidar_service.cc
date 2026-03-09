@@ -1,88 +1,134 @@
 #include "lidar_service.hh"
 #include "conversions.hh"
 #include "timing/timing.hh"
+#include <atomic>
 #include <pcl/filters/voxel_grid.h>
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
     : lidar_(lidar) {}
 
-grpc::Status LidarServiceImpl::getLidarScan(
-    ::grpc::ServerContext *context,
-    const ::sensors::LidarStreamRequest *request,
-    ::grpc::ServerWriter<sensors::PointCloud3> *writer) {
+// ---------------------------------------------------------------------------
+// getLidarScan — server-streaming via WriteReactor
+// ---------------------------------------------------------------------------
 
-  static bool s_client_connected = false;
-
-  if (!lidar_) {
-    return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Lidar not available");
+class LidarScanReactor : public grpc::ServerWriteReactor<sensors::PointCloud3> {
+public:
+  LidarScanReactor(std::shared_ptr<msensor::ILidar> lidar)
+      : lidar_(std::move(lidar)) {
+    std::cout << "Start Lidar scan stream." << std::endl;
+    NextWrite();
   }
 
-  if (s_client_connected) {
-    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client per stream supported");
+  void OnWriteDone(bool ok) override {
+    if (!ok) {
+      Finish(grpc::Status::OK);
+      return;
+    }
+    NextWrite();
   }
 
-  std::cout << "Start Lidar scan stream." << std::endl;
+  void OnCancel() override {
+    std::cout << "Ending Lidar scan stream." << std::endl;
+  }
 
-  s_client_connected = true;
+  void OnDone() override { delete this; }
 
-  while (!context->IsCancelled()) {
-    if (const auto scan = lidar_->getScan()) {
-      writer->Write(toGRPC(scan));
+private:
+  void NextWrite() {
+    if (auto scan = lidar_->getScan()) {
+      response_ = toGRPC(scan);
+      StartWrite(&response_);
     }
   }
-  std::cout << "Ending Lidar scan stream." << std::endl;
-  s_client_connected = false;
 
-  return ::grpc::Status::OK;
+  std::shared_ptr<msensor::ILidar> lidar_;
+  sensors::PointCloud3 response_;
+};
+
+grpc::ServerWriteReactor<sensors::PointCloud3> *
+LidarServiceImpl::getLidarScan(grpc::CallbackServerContext * /*context*/,
+                               const sensors::LidarStreamRequest * /*request*/) {
+  if (!lidar_) {
+    auto *reactor = new LidarScanReactor(nullptr);
+    reactor->Finish(grpc::Status(grpc::StatusCode::UNAVAILABLE,
+                                 "Lidar not available"));
+    return reactor;
+  }
+  return new LidarScanReactor(lidar_);
 }
 
-grpc::Status LidarServiceImpl::getSubSampledLidarScan(
-    ::grpc::ServerContext *context,
-    ::grpc::ServerReaderWriter<::sensors::PointCloud3,
-                               ::sensors::SubSampledLidarStreamRequest>
-        *stream) {
+// ---------------------------------------------------------------------------
+// getSubSampledLidarScan — bidi streaming via BidiReactor
+//
+// Reads and writes are fully independent:
+//   - OnReadDone:  updates the voxel size when the client sends a new value
+//   - OnWriteDone: gets the next scan, filters it, and writes it back
+// ---------------------------------------------------------------------------
 
-  static bool s_client_connected = false;
-
-  if (!lidar_) {
-    return grpc::Status(grpc::StatusCode::UNAVAILABLE, "Lidar not available");
+class SubSampledLidarReactor
+    : public grpc::ServerBidiReactor<sensors::SubSampledLidarStreamRequest,
+                                     sensors::PointCloud3> {
+public:
+  SubSampledLidarReactor(std::shared_ptr<msensor::ILidar> lidar)
+      : lidar_(std::move(lidar)) {
+    std::cout << "Start subsampled Lidar scan stream." << std::endl;
+    StartRead(&request_);  // start listening for client messages
+    NextWrite();            // start pushing scans immediately
   }
 
-  if (s_client_connected) {
-    return grpc::Status(grpc::StatusCode::RESOURCE_EXHAUSTED,
-                        "Only one client per stream supported");
+  void OnReadDone(bool ok) override {
+    if (!ok)
+      return; // client closed its half
+    std::cout << "Received subsample request with voxel size: "
+              << request_.voxel_size() << std::endl;
+    voxel_size_.store(request_.voxel_size());
+    StartRead(&request_); // keep listening
   }
 
-  std::cout << "Start subsampled Lidar scan stream." << std::endl;
+  void OnWriteDone(bool ok) override {
+    if (!ok) {
+      Finish(grpc::Status::OK);
+      return;
+    }
+    NextWrite();
+  }
 
-  s_client_connected = true;
+  void OnCancel() override {
+    std::cout << "Ending subsampled Lidar scan stream." << std::endl;
+  }
 
-  sensors::SubSampledLidarStreamRequest request;
-  float voxel = 0.1f; // default voxel size
-  while (!context->IsCancelled()) {
-    if (const auto scan = lidar_->getScan()) {
-      /// TODO: apply subsample filter
-      if (stream->Read(&request)) {
-        std::cout << "Received subsample request with voxel size: "
-                  << request.voxel_size() << std::endl;
-        voxel = request.voxel_size();
-      }
+  void OnDone() override { delete this; }
 
-      if (scan) {
-      pcl::VoxelGrid<msensor::Point3I> voxel;
-        voxel.setInputCloud(scan->points);
-        voxel.setLeafSize(request.voxel_size(), request.voxel_size(),
-                          request.voxel_size());
-        auto filtered_scan = std::make_shared<msensor::Scan3DI>();
-        filtered_scan->timestamp = timing::getNowUs();
-        voxel.filter(*filtered_scan->points);
-        stream->Write(toGRPC(filtered_scan));
-      }
+private:
+  void NextWrite() {
+    if (auto scan = lidar_->getScan()) {
+      float vs = voxel_size_.load();
+      pcl::VoxelGrid<msensor::Point3I> grid;
+      grid.setInputCloud(scan->points);
+      grid.setLeafSize(vs, vs, vs);
+      auto filtered = std::make_shared<msensor::Scan3DI>();
+      filtered->timestamp = timing::getNowUs();
+      grid.filter(*filtered->points);
+      response_ = toGRPC(filtered);
+      StartWrite(&response_);
     }
   }
-  std::cout << "Ending subsampled Lidar scan stream." << std::endl;
-  s_client_connected = false;
 
-  return ::grpc::Status::OK;
+  std::shared_ptr<msensor::ILidar> lidar_;
+  std::atomic<float> voxel_size_{0.1f};
+  sensors::SubSampledLidarStreamRequest request_;
+  sensors::PointCloud3 response_;
+};
+
+grpc::ServerBidiReactor<sensors::SubSampledLidarStreamRequest,
+                        sensors::PointCloud3> *
+LidarServiceImpl::getSubSampledLidarScan(
+    grpc::CallbackServerContext * /*context*/) {
+  if (!lidar_) {
+    auto *reactor = new SubSampledLidarReactor(nullptr);
+    reactor->Finish(grpc::Status(grpc::StatusCode::UNAVAILABLE,
+                                 "Lidar not available"));
+    return reactor;
+  }
+  return new SubSampledLidarReactor(lidar_);
 }
