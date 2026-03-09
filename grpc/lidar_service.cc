@@ -1,7 +1,7 @@
-
 #include "lidar_service.hh"
 #include "conversions.hh"
-#include <pcl/point_types.h>
+#include "timing/timing.hh"
+#include <pcl/filters/voxel_grid.h>
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
     : lidar_(lidar) {}
@@ -37,8 +37,11 @@ grpc::Status LidarServiceImpl::getLidarScan(
   return ::grpc::Status::OK;
 }
 
-
-grpc::Status LidarServiceImpl::getSubSampledLidarScan(::grpc::ServerContext* context, ::grpc::ServerReaderWriter< ::sensors::PointCloud3, ::sensors::SubSampledLidarStreamRequest>* stream) {
+grpc::Status LidarServiceImpl::getSubSampledLidarScan(
+    ::grpc::ServerContext *context,
+    ::grpc::ServerReaderWriter<::sensors::PointCloud3,
+                               ::sensors::SubSampledLidarStreamRequest>
+        *stream) {
 
   static bool s_client_connected = false;
 
@@ -56,17 +59,26 @@ grpc::Status LidarServiceImpl::getSubSampledLidarScan(::grpc::ServerContext* con
   s_client_connected = true;
 
   sensors::SubSampledLidarStreamRequest request;
+  float voxel = 0.1f; // default voxel size
   while (!context->IsCancelled()) {
     if (const auto scan = lidar_->getScan()) {
       /// TODO: apply subsample filter
-      if(stream->Read(&request)) {
-        std::cout << "Received subsample request with voxel size: " << request.voxel_size() << std::endl;
-
+      if (stream->Read(&request)) {
+        std::cout << "Received subsample request with voxel size: "
+                  << request.voxel_size() << std::endl;
+        voxel = request.voxel_size();
       }
 
-      if (const auto scan = lidar_->getScan()) {
-      stream->Write(toGRPC(scan));
-    }
+      if (scan) {
+      pcl::VoxelGrid<msensor::Point3I> voxel;
+        voxel.setInputCloud(scan->points);
+        voxel.setLeafSize(request.voxel_size(), request.voxel_size(),
+                          request.voxel_size());
+        auto filtered_scan = std::make_shared<msensor::Scan3DI>();
+        filtered_scan->timestamp = timing::getNowUs();
+        voxel.filter(*filtered_scan->points);
+        stream->Write(toGRPC(filtered_scan));
+      }
     }
   }
   std::cout << "Ending subsampled Lidar scan stream." << std::endl;
@@ -74,4 +86,3 @@ grpc::Status LidarServiceImpl::getSubSampledLidarScan(::grpc::ServerContext* con
 
   return ::grpc::Status::OK;
 }
-

@@ -101,7 +101,7 @@ def main():
         name="/lidar",
         points=points,
         colors=colors,
-        point_size=0.05,
+        point_size=0.15,
         point_shape="rounded",
     )
 
@@ -179,14 +179,14 @@ def main():
     # Voxel size slider → drives the bidi stream requests
 
     voxel_queue: queue.Queue[float] = queue.Queue()
-    voxel_queue.put(2.0)  # initial request
+    voxel_queue.put(1.0)  # initial request
 
     demo_slider = server.gui.add_slider(
         "Voxel Size",
         min=0.1,
-        max=5.0,
+        max=10.0,
         step=0.1,
-        initial_value=2.0,
+        initial_value=1.0,
         hint="Voxel size sent to the subsampled LiDAR stream.",
     )
 
