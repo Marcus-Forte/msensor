@@ -35,8 +35,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto record = atoi(argv[4]);
-
   lidar->startSampling();
 
   SensorsServer server(nullptr, nullptr, nullptr, lidar);

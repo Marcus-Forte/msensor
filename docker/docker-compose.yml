@@ -1,0 +1,46 @@
+services:
+
+  msensor:
+    image: mdnf1992/msensor
+    init: true
+    restart: unless-stopped
+    pull_policy: always
+    privileged: true
+    command: ["all_publisher"]
+    profiles: ["robot"]
+    environment:
+      CAMERA_PIPELINE: "libcamerasrc ! video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
+    ports:
+      - "50051:50051"
+    volumes:
+      - "/dev:/dev"
+      - "/run/udev:/run/udev"
+
+  mid360:
+    image: mdnf1992/msensor
+    init: true
+    restart: unless-stopped
+    pull_policy: always
+    privileged: true
+    network_mode: host
+    command: ["mid360_publisher", "/usr/local/etc/mid360_config.json", "100", "1"]
+    profiles: ["mid360"]
+    ports:
+      - "50051:50051"
+    volumes:
+      - "/dev:/dev"
+      - "/run/udev:/run/udev"
+      - "./cfg:/cfg"
+
+  robot:
+    image: mdnf1992/grpc-robot
+    init: true
+    restart: unless-stopped
+    # pull_policy: always
+    privileged: true
+    ports:
+      - "50052:50051"
+    volumes:
+      - "/dev:/dev"
+
+    profiles: ["robot"]

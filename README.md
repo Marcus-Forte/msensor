@@ -37,3 +37,17 @@ See `client/README.md` for proto regeneration instructions.
 A `DockerfileRuntime` is provided to offer small footprint images that allows one to run the sensor driver applications from inside a container. 
 
 Make sure the hardware is correctly mapped to the container (e.g `--device /dev/i2c-1`, `--device /dev/ttyUSB*`,  `--network=host`, ...), or use `docker run -v /dev:/dev -v /run/udev:/run/udev --privileged` to allow complete device access.
+
+A `docker-compose.yml` is provided in `docker` folder illustrating how to compose and deploy this app.
+
+To use a specific "profile" (i.e. a group of services), use like 
+
+For the mid360 app alone
+```bash
+docker compose --profile mid360 up
+```
+
+For the "robot" profile (msensor all publisher + robot service)
+```bash
+docker compose --profile robot up
+```

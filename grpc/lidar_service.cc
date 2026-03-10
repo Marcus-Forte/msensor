@@ -2,6 +2,8 @@
 #include "conversions.hh"
 #include "timing/timing.hh"
 #include <atomic>
+#include <chrono>
+#include <thread>
 #include <pcl/filters/voxel_grid.h>
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
@@ -35,10 +37,10 @@ public:
 
 private:
   void NextWrite() {
-    const auto scan = lidar_->getScan();
-    if (!scan) {
-      NextWrite();
-      return;
+    std::shared_ptr<msensor::Scan3DI> scan;
+    while (!(scan = lidar_->getScan())) {
+      /// TODO: can we prevent sleep??
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     response_ = toGRPC(scan);
     StartWrite(&response_);
@@ -104,11 +106,9 @@ public:
 
 private:
   void NextWrite() {
-    const auto scan = lidar_->getScan();
-    if (!scan) {
-      // Scan failed - retry immediately (getScan has its own timeout)
-      NextWrite();
-      return;
+    std::shared_ptr<msensor::Scan3DI> scan;
+    while (!(scan = lidar_->getScan())) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     float vs = voxel_size_.load();
     pcl::VoxelGrid<msensor::Point3I> grid;

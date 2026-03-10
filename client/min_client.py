@@ -96,6 +96,9 @@ def main():
 
     # Start the Viser server and create a point cloud object to hold the LiDAR data
     server = viser.ViserServer(port=8081)
+    # TODO black BG
+    bg_img = np.ndarray((1, 3, 3))
+    server.scene.set_background_image(image=bg_img)
 
     # Add a mock point cloud
 
@@ -191,9 +194,9 @@ def main():
 
     # demo_slider = server.gui.add_slider(
     #     "Voxel Size",
-    #     min=0.1,
-    #     max=10,
-    #     step=0.05,
+    #     min=0.01,
+    #     max=1,
+    #     step=0.01,
     #     initial_value=0.1,
     #     hint="Voxel size sent to the subsampled LiDAR stream.",
     # )
