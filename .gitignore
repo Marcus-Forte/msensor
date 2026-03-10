@@ -2,3 +2,6 @@ build/
 build-mac/
 .cache/
 third_party/rplidar_sdk/.cache
+
+# Puml
+docs/generated/
