@@ -7,12 +7,14 @@
 #include "camera/opencv_camera.hh"
 #include "imu/icm-20948.h"
 #include "imu/icm-20948_defs.h"
+#include "lidar/mid360.hh"
 #include "lidar/rp_lidar.hh"
 #include "sensors_server.hh"
 
 constexpr int DefaultI2cBus = 1;
 constexpr uint8_t DefaultADSAddress = 0x48;
 constexpr const char *DefaultLidarDevice = "/dev/ttyUSB0";
+constexpr const char *DefaultMid360Config = "/cfg/mid360_config.json";
 constexpr uint64_t LoopPeriodUs = 1000;
 constexpr const char *DefaultStreamPipeline =
     "libcamerasrc ! "
@@ -21,7 +23,7 @@ constexpr const char *DefaultStreamPipeline =
 
 static void print_usage() {
   std::cout
-      << "Usage: all_publisher [-b <i2c bus>] [-l <usb lidar device path>]"
+      << "Usage: all_publisher [-b <i2c bus>] [-l <usb lidar device path>] [-m <mid360 config>]"
       << std::endl;
 }
 
@@ -30,14 +32,18 @@ int main(int argc, char **argv) {
   int opt;
   int bus = DefaultI2cBus;
   std::filesystem::path lidar_device(DefaultLidarDevice);
+  const char *mid360_config = nullptr;
 
-  while ((opt = getopt(argc, argv, "b:l:h")) != -1) {
+  while ((opt = getopt(argc, argv, "b:l:m:h")) != -1) {
     switch (opt) {
     case 'b':
       bus = std::strtol(optarg, nullptr, 0);
       break;
     case 'l':
       lidar_device = std::filesystem::path(optarg);
+      break;
+    case 'm':
+      mid360_config = optarg;
       break;
     case 'h':
     default:
@@ -46,11 +52,19 @@ int main(int argc, char **argv) {
     }
   }
 
-  std::shared_ptr<msensor::RPLidar> lidar = nullptr;
-  if (std::filesystem::exists(lidar_device)) {
-    lidar = std::make_shared<msensor::RPLidar>(lidar_device);
-    lidar->init();
-    lidar->setMotorRPM(360);
+  std::shared_ptr<msensor::ILidar> lidar = nullptr;
+  if (mid360_config) {
+    auto mid360 = std::make_shared<msensor::Mid360>(mid360_config, 100);
+    mid360->init();
+    mid360->setMode(msensor::Mid360::Mode::Normal);
+    mid360->setScanPattern(msensor::Mid360::ScanPattern::NonRepetitive);
+    mid360->startSampling();
+    lidar = mid360;
+  } else if (std::filesystem::exists(lidar_device)) {
+    auto rp = std::make_shared<msensor::RPLidar>(lidar_device);
+    rp->init();
+    rp->setMotorRPM(360);
+    lidar = rp;
   } else {
     std::cerr << "Lidar device: " << lidar_device
               << " does not exist. Lidar will be unavailable." << std::endl;

@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     pull_policy: always
     privileged: true
-    command: ["all_publisher"]
+    network_mode: host
+    command: ["all_publisher", "-m", "/usr/local/etc/mid360_config.json"]
     profiles: ["robot"]
     environment:
       CAMERA_PIPELINE: "libcamerasrc ! video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
