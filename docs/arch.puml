@@ -1,11 +1,14 @@
 @startuml Architecture
 
 skinparam packageStyle rectangle
+allowmixing
 
-package "Proto Definitions (proto/)" as P {
+package "Proto Definitions" as Proto {
 }
 
-package "gRPC Services (grpc/)" as S {
+class SensorServer 
+package "Sensor Services" as SSensor {
+
     class LidarServiceImpl {
         -lidar : ILidar
     }
@@ -18,29 +21,22 @@ package "gRPC Services (grpc/)" as S {
     class AdcServiceImpl {
         -adc : IAdc
     }
+
+    SensorServer *-- LidarServiceImpl
+    SensorServer *-- ImuServiceImpl
+    SensorServer *-- CameraServiceImpl
+    SensorServer *-- AdcServiceImpl
+
 }
 
-package "Python Client (client/)" as C {
-    class SensorClient {
-        -channel : grpc.Channel
-        +stream_lidar() : Iterator[PointCloud3]
-        +stream_imu() : Iterator[IMUData]
-        +stream_camera() : Iterator[CameraStreamReply]
-        +get_adc(channel) : AdcData
-    }
-}
-
-' Keep client beside services
-S -right[hidden]- C
-
-package "Sensor Interfaces (include/interface/)" as I {
+package "Sensor Interfaces" as ISensor {
     interface ILidar
     interface IImu
     interface ICamera
     interface IAdc
 }
 
-package "Sensor Drivers (src/)" as D {
+package "Sensor Drivers" as Sensor {
     class RPLidar
     class Mid360
     class ICM20948
@@ -48,8 +44,15 @@ package "Sensor Drivers (src/)" as D {
     class ADS1115
 }
 
+package "Sensor Simulators" as SimSensor {
+    class LidarSimulator
+    class ImuSimulator
+    class CameraSimulator
+    class AdcSimulator
+}
+
 ' Proto generates services
-P ..> S : generates
+Proto ..> SSensor : generates
 
 ' Services depend on Interfaces (dependency injection)
 LidarServiceImpl o-- ILidar
@@ -58,7 +61,7 @@ CameraServiceImpl o-- ICamera
 AdcServiceImpl o-- IAdc
 
 ' Force Drivers below Interfaces
-I -down[hidden]- D
+ISensor -down[hidden]- Sensor
 
 ' Drivers implement Interfaces
 RPLidar .up.|> ILidar
@@ -67,9 +70,13 @@ ICM20948 .up.|> IImu
 OpenCvCamera .up.|> ICamera
 ADS1115 .up.|> IAdc
 
-' Proto generates client stubs used by the Python client
-P ..> C : generates stubs
+' Simulators also implement Interfaces
+LidarSimulator .up..|> ILidar
+ImuSimulator .up..|> IImu
+CameraSimulator .up..|> ICamera
+AdcSimulator .up..|> IAdc
 
+component SensorClient
 ' Client calls gRPC services
 SensorClient --> LidarServiceImpl : getLidarScan
 SensorClient --> ImuServiceImpl : getImuData

@@ -29,15 +29,14 @@ int main(int argc, char **argv) {
   // add opencv logs
   cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_DEBUG);
 
-  OpenCvCamera camera(argv[1]);
+  auto camera = std::make_shared<OpenCvCamera>(argv[1]);
 
-  if (!camera.isOpened()) {
+  if (!camera->isOpened()) {
     std::cerr << "Error: Could not open camera." << std::endl;
     return -1;
   }
 
-  SensorsServer server(nullptr, std::make_shared<OpenCvCamera>(camera), nullptr,
-                       nullptr);
+  SensorsServer server(nullptr, camera, nullptr, nullptr);
   server.start();
 
   while (true) {

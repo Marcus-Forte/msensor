@@ -1,3 +1,6 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/client/.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder}/client/.venv/bin/python",
+    "plantuml.exportFormat": "png",
+    "plantuml.exportIncludeFolderHeirarchy": false,
+    "plantuml.exportOutDir": "docs/generated/"
 }
