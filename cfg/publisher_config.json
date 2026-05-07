@@ -1,0 +1,18 @@
+{
+  "icm20948": {
+    "enable": false
+  },
+  "rplidar": {
+    "enable": false,
+      "device": "/dev/ttyUSB0"
+  },
+  "camera": {
+    "enable": true,
+    "pipeline": "libcamerasrc ! video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false"
+  },
+
+  "mid360": {
+    "enable": true,
+    "config": "cfg/mid360_config.json"
+  }
+}

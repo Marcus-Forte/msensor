@@ -1,10 +1,13 @@
 add_subdirectory(file)
+add_subdirectory(config)
+
 add_subdirectory(timing)
 add_subdirectory(lidar)
 add_subdirectory(imu)
 add_subdirectory(recorder)
 add_subdirectory(adc)
 add_subdirectory(camera)
+
 
 # Core library
 add_library(${PROJECT_NAME} INTERFACE)
@@ -30,7 +33,7 @@ add_executable(camera_publisher camera_publisher.cc)
 target_link_libraries(camera_publisher opencv_camera ${PROJECT_NAME})
 
 add_executable(all_publisher all_publisher.cc)
-target_link_libraries(all_publisher ads1115 rp_lidar icm-20948 ${PROJECT_NAME} opencv_camera mid360)
+target_link_libraries(all_publisher ads1115 rp_lidar icm-20948 ${PROJECT_NAME} opencv_camera mid360 config)
 
 
 include(GNUInstallDirs)
@@ -44,7 +47,9 @@ install(TARGETS
     camera_publisher
 DESTINATION ${CMAKE_INSTALL_BINDIR} RUNTIME_DEPENDENCY_SET runtime_targets)
 
-# Import runtime dependencies, exclude system libraries
-set(RUNTIME_DEPENDENCY_POST_EXCLUDE_REGEX "^/lib/.*")
-install(RUNTIME_DEPENDENCY_SET runtime_targets POST_EXCLUDE_REGEXES ${RUNTIME_DEPENDENCY_POST_EXCLUDE_REGEX} PRE_INCLUDE_REGEXES "."
-DESTINATION ${CMAKE_INSTALL_LIBDIR})
+# Import runtime dependencies while excluding system libraries from /lib and
+# /usr/lib.
+install(RUNTIME_DEPENDENCY_SET runtime_targets
+    PRE_INCLUDE_REGEXES "."
+    POST_EXCLUDE_REGEXES "^/lib/.*" "^/usr/lib/.*"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR})
