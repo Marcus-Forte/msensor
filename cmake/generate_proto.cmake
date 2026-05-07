@@ -17,6 +17,12 @@ get_filename_component(protofile_fullpath "${proto_file}" ABSOLUTE)
 get_filename_component(protofile_path "${protofile_fullpath}" PATH)
 get_filename_component(protofile_name "${protofile_fullpath}" NAME_WE)
 
+set(proto_include_args "--proto_path=${protofile_path}")
+foreach(include_dir ${ARGN})
+get_filename_component(proto_include_dir "${include_dir}" ABSOLUTE)
+list(APPEND proto_include_args "--proto_path=${proto_include_dir}")
+endforeach()
+
 message(STATUS "Generating cpp proto files for ${protofile_fullpath}")
 
 # Generated sources
@@ -28,7 +34,7 @@ add_custom_command(
       COMMAND ${_PROTOBUF_PROTOC}
       ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
         --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
-        -I "${protofile_path}"
+        ${proto_include_args}
         --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
         "${protofile_fullpath}"   
       DEPENDS "${protofile_fullpath}"

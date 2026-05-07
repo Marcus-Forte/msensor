@@ -1,0 +1,15 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "default",
+            "displayName": "default",
+            "toolchainFile": "/opt/toolchains/native.cmake",
+            "binaryDir": "${workspaceFolder}/build/${presetName}",
+            "generator": "Ninja",
+            "installDir": "${workspaceFolder}/build/${presetName}/install",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }]
+}

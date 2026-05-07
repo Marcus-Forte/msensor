@@ -9,7 +9,7 @@ COPY . /src
 # `make install` will install all binaries and library dependencies to `/app`
 RUN mkdir -p /src/build && cd /src/build && \
     cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/toolchains/native.cmake \
-    -DCMAKE_INSTALL_PREFIX=/app \ 
+    -DCMAKE_INSTALL_PREFIX=/app \
     -DBUILD_TESTING=OFF && \
     make -j6 install 
 
@@ -19,10 +19,12 @@ ENV GST_PLUGIN_PATH=/usr/local/lib/aarch64-linux-gnu/gstreamer-1.0:/usr/local/li
 
 RUN apt-get update && apt-get install -y \
     libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libgnutls30 libdw1 libunwind8 libi2c0 libjpeg62-turbo libgomp1 libegl1 libgles2 \
-    libboost-log1.83.0 libboost-thread1.83.0 \
+    libboost-log1.83.0 libboost-thread1.83.0 libboost-system1.83.0 libboost-iostreams1.83.0 libboost-atomic1.83.0 libboost-serialization1.83.0 \
+    libflann1.9 liborc-0.4-0 libjsoncpp26 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app /usr/local/
+COPY --from=build /app/etc/ /cfg/
 COPY --from=build /usr/local/share /usr/local/share/
 COPY --from=build /usr/local/lib/aarch64-linux-gnu/ /usr/local/lib/aarch64-linux-gnu/
 COPY --from=build --chmod=0755 /src/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -32,7 +34,6 @@ RUN ldconfig
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD []
 # One can use `scratch` as a base and manually call the copied `ld` binary.
-# Use -DIMPORT_ALL_RUNTIME=ON when building for scratch.
 # RUN chmod +x /app/lib/ld-linux-aarch64.so.1
 # FROM scratch AS runtime
 # CMD ["/usr/local/lib/ld-linux-aarch64.so.1", "--library-path=/usr/local/lib", "/usr/local/bin/sim_publisher"]
