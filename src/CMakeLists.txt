@@ -38,7 +38,6 @@ target_link_libraries(all_publisher ads1115 rp_lidar icm-20948 ${PROJECT_NAME} o
 add_executable(remote_recorder remote_recorder.cc)
 target_link_libraries(remote_recorder ${PROJECT_NAME})
 
-
 include(GNUInstallDirs)
 install(TARGETS 
     all_publisher
