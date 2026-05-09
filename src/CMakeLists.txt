@@ -35,10 +35,14 @@ target_link_libraries(camera_publisher opencv_camera ${PROJECT_NAME})
 add_executable(all_publisher all_publisher.cc)
 target_link_libraries(all_publisher ads1115 rp_lidar icm-20948 ${PROJECT_NAME} opencv_camera mid360 config)
 
+add_executable(remote_recorder remote_recorder.cc)
+target_link_libraries(remote_recorder ${PROJECT_NAME})
+
 
 include(GNUInstallDirs)
 install(TARGETS 
     all_publisher
+    remote_recorder
     rplidar_publisher
     mid360_publisher
     sim_publisher
