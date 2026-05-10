@@ -1,7 +1,6 @@
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
-#include <thread>
 
 #include "conversions.hh"
 #include "sensors_remote_client.hh"
@@ -95,10 +94,13 @@ void SensorsRemoteClient::start() {
 }
 
 void SensorsRemoteClient::stop() {
-  read_thread_.request_stop();
-  imu_reader_thread_.request_stop();
+  if (read_thread_.joinable()) {
+    read_thread_.request_stop();
+    read_thread_.join();
+  }
 
-  /// \todo why does it not work in unit test?
-  read_thread_.join();
-  imu_reader_thread_.join();
+  if (imu_reader_thread_.joinable()) {
+    imu_reader_thread_.request_stop();
+    imu_reader_thread_.join();
+  }
 }

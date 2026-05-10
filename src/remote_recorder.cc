@@ -43,9 +43,15 @@ int main(int argc, char **argv) {
   msensor::ScanRecorder recorder(file);
   bool has_reported_lidar_flow = false;
   bool has_reported_imu_flow = false;
+  std::size_t lidar_entries_saved = 0;
+  std::size_t imu_entries_saved = 0;
 
   if (argc == 3) {
-    recorder.start(argv[2]);
+    std::string output_filename = argv[2];
+    if (!output_filename.ends_with(".pbscan")) {
+      output_filename += ".pbscan";
+    }
+    recorder.start(output_filename);
   } else {
     recorder.start();
   }
@@ -60,20 +66,22 @@ int main(int argc, char **argv) {
 
     while (const auto scan = client.getScan()) {
       recorder.record(scan);
+      ++lidar_entries_saved;
       recorded_sample = true;
       if (!has_reported_lidar_flow) {
         std::cout << "Connected to " << remote_address
-                  << "; LiDAR data is flowing." << std::endl;
+                  << "; Receiving LiDAR data" << std::endl;
         has_reported_lidar_flow = true;
       }
     }
 
     while (const auto imu = client.getImuData()) {
       recorder.record(*imu);
+      ++imu_entries_saved;
       recorded_sample = true;
       if (!has_reported_imu_flow) {
         std::cout << "Connected to " << remote_address
-                  << "; IMU data is flowing." << std::endl;
+                  << "; Receiving IMU data" << std::endl;
         has_reported_imu_flow = true;
       }
     }
@@ -85,5 +93,8 @@ int main(int argc, char **argv) {
 
   client.stop();
   recorder.stop();
+  std::cout << "Saved recording to " << recorder.getFilename() << std::endl;
+  std::cout << "Saved entries - LiDAR: " << lidar_entries_saved
+            << ", IMU: " << imu_entries_saved << std::endl;
   return 0;
 }
