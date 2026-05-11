@@ -17,10 +17,9 @@ from proto_gen import lidar_pb2, lidar_pb2_grpc
 from proto_gen import imu_pb2, imu_pb2_grpc
 from proto_gen import camera_pb2, camera_pb2_grpc
 from proto_gen import adc_pb2, adc_pb2_grpc
-from robot_control import RobotControlHandle, start_robot_control
 
 
-DEFAULT_SERVER_ADDR = "192.168.3.232:50051"
+DEFAULT_SERVER_ADDR = "localhost:50051"
 DEFAULT_ADC_CHANNEL = 0
 DEFAULT_ADC_PERIOD_SEC = 0.5
 
@@ -272,10 +271,6 @@ def stream_adc(
 def parse_args():
     parser = argparse.ArgumentParser(description="Subscribe to multiple sensor streams over gRPC.")
     parser.add_argument("--server", default=DEFAULT_SERVER_ADDR, help="gRPC target host:port")
-    parser.add_argument(
-        "--robot-server",
-        help="gRPC target host:port for robot control (optional)",
-    )
     parser.add_argument("--imu", action="store_true", help="Subscribe to the IMU stream")
     parser.add_argument("--lidar", action="store_true", help="Subscribe to the LiDAR stream")
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
@@ -316,11 +311,6 @@ def main():
     threads: list[threading.Thread] = []
 
     battery_level_handle = server.gui.add_number("Battery Voltage (V)", initial_value=0.0, step=0.1, disabled=True)
-
-    robot_handle: Optional[RobotControlHandle] = None
-    if args.robot_server:
-        robot_handle = start_robot_control(server, args.robot_server, stop_event)
-        threads.append(robot_handle.thread)
 
     logger.info(f"Connecting to sensor server at {args.server}")
     with grpc.insecure_channel(args.server) as channel:
@@ -385,9 +375,6 @@ def main():
 
     for t in threads:
         t.join()
-
-    if robot_handle:
-        robot_handle.close()
 
 
 if __name__ == "__main__":

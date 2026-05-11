@@ -11,7 +11,7 @@ Available apps (run as CMD/args):
   icm20948_publisher
   ads1115_publisher
   camera_publisher
-  all_publisher
+  sensor_publisher
 
 Example:
   docker run --rm <image> rplidar_publisher /dev/ttyUSB0

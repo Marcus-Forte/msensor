@@ -1,5 +1,8 @@
 {
     "python.defaultInterpreterPath": "${workspaceFolder}/client/.venv/bin/python",
+    "files.associations": {
+        "**/DockerfileRuntime": "dockerfile"
+    },
     "plantuml.exportFormat": "png",
     "plantuml.exportIncludeFolderHeirarchy": false,
     "plantuml.exportOutDir": "docs/generated/"

@@ -13,9 +13,9 @@ See `src/<sensor_type>/` for examples.
 
 ### Server
 
-Publisher executables (e.g. `all_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**.
+Publisher executables (e.g. `sensor_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**.
 
-`all_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/cfg/publisher_config.json`, or you can pass a different file path as the only argument.
+`sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/cfg/publisher_config.json`, or you can pass a different file path as the only argument.
 
 The config uses per-sensor objects such as `rplidar.enable`, `rplidar.device`, `camera.pipeline`, and `mid360.config`.
 

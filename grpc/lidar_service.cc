@@ -40,7 +40,7 @@ private:
     std::shared_ptr<msensor::Scan3DI> scan;
     while (!(scan = lidar_->getScan())) {
       /// TODO: can we prevent sleep??
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     response_ = toGRPC(scan);
     StartWrite(&response_);
@@ -108,7 +108,7 @@ private:
   void NextWrite() {
     std::shared_ptr<msensor::Scan3DI> scan;
     while (!(scan = lidar_->getScan())) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     float vs = voxel_size_.load();
     pcl::VoxelGrid<msensor::Point3I> grid;

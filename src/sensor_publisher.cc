@@ -17,7 +17,7 @@ constexpr uint8_t DefaultADSAddress = 0x48;
 
 static void print_usage() {
   std::cout
-      << "Usage: all_publisher [config.json]"
+      << "Usage: sensor_publisher [config.json]"
       << std::endl;
 }
 
