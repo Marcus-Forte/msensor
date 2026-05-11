@@ -19,7 +19,7 @@ bool OpenCvCamera::read(CameraFrame &frame) {
   }
   bool success = m_capture.read(frame.mat);
   if (success) {
-    frame.timestamp = timing::getNowUs();
+    frame.timestamp = timing::getNowNs();
   }
   return success;
 }

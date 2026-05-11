@@ -7,7 +7,7 @@ services:
     pull_policy: always
     privileged: true
     network_mode: host
-    command: ["all_publisher", "/cfg/publisher_config.json"]
+    command: ["sensor_publisher", "/cfg/publisher_config.json"]
     profiles: ["robot"]
     ports:
       - "50051:50051"
@@ -15,17 +15,3 @@ services:
       - "./cfg:/cfg"
       - "/dev:/dev"
       - "/run/udev:/run/udev"
-
-
-  robot:
-    image: mdnf1992/grpc-robot
-    init: true
-    restart: unless-stopped
-    # pull_policy: always
-    privileged: true
-    ports:
-      - "50052:50051"
-    volumes:
-      - "/dev:/dev"
-
-    profiles: ["robot"]

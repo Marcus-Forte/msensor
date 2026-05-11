@@ -1,6 +1,7 @@
 
 #include "imu_service.hh"
 #include "conversions.hh"
+#include <thread>
 
 ImuServiceImpl::ImuServiceImpl(std::shared_ptr<msensor::IImu> imu)
     : imu_(imu) {}
@@ -29,6 +30,7 @@ ImuServiceImpl::getImuData(::grpc::ServerContext *context,
     if (const auto imu_data = imu_->getImuData()) {
       writer->Write(toGRPC(*imu_data));
     }
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 
   std::cout << "Ending IMU data stream." << std::endl;

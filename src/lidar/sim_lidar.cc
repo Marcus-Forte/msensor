@@ -38,7 +38,7 @@ std::shared_ptr<Scan3DI> SimLidar::getScan() {
     }
   }
 
-  scan->timestamp = timing::getNowUs();
+  scan->timestamp = timing::getNowNs();
 
   std::this_thread::sleep_for(std::chrono::milliseconds(25)); // 40 Hz.
 

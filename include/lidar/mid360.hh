@@ -36,14 +36,22 @@ public:
   Mid360(const std::string &&config, size_t accumulate_scan_count);
   /// Initialize the Livox driver and connect to the device.
   void init() override;
+
   /// Retrieve the next accumulated point cloud.
+  /// \note Time is in nanoseconds and corresponds to the first point of the
+  /// first UDP packet accumulated into the returned scan.
   std::shared_ptr<Scan3DI> getScan() override;
+
   /// Retrieve the latest IMU sample from the embedded sensor.
+  /// \note Time is in nanoseconds.
   std::optional<IMUData> getImuData() override;
+
   /// Start sampling LiDAR and IMU data.
   void startSampling() override;
+
   /// Stop sampling operations.
   void stopSampling() override;
+
   /// Switch power/normal operating mode.
   void setMode(Mode mode);
 
