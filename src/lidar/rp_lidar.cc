@@ -26,7 +26,7 @@ toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count) {
     float y = sin(angle_in_pi) * dist_m;
     scan->points->emplace_back(x, y, 0, 0);
   }
-  scan->timestamp = timing::getNowUs();
+  scan->timestamp = timing::getNowNs();
 
   return scan;
 }

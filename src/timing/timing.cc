@@ -9,4 +9,10 @@ uint64_t getNowUs() {
              std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
+
+uint64_t getNowNs() {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
 } // namespace timing
