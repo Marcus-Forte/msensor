@@ -21,3 +21,11 @@ add_library(ICamera INTERFACE)
 target_include_directories(ICamera INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ICamera INTERFACE ${OpenCV_LIBS})
 target_include_directories(ICamera INTERFACE ${OpenCV_INCLUDE_DIRS})
+
+# Namespaced aliases for submodule consumers
+add_library(msensor::IFile ALIAS IFile)
+add_library(msensor::IConfig ALIAS IConfig)
+add_library(msensor::IImu ALIAS IImu)
+add_library(msensor::ILidar ALIAS ILidar)
+add_library(msensor::IAdc ALIAS IAdc)
+add_library(msensor::ICamera ALIAS ICamera)

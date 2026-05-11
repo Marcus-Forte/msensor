@@ -39,7 +39,5 @@ add_custom_command(
         "${protofile_fullpath}"   
       DEPENDS "${protofile_fullpath}"
       )
-# Have the generated header files be found.
-include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 endfunction()
