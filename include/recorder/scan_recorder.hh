@@ -46,9 +46,13 @@ public:
    */
   void stop();
 
+  /// Return the current output filename.
+  const std::string &getFilename() const;
+
 private:
   std::shared_ptr<IFile> record_file_;
   bool has_started_;
+  std::string filename_;
 };
 
 } // namespace msensor

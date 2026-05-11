@@ -27,12 +27,14 @@ ScanRecorder::~ScanRecorder() { record_file_->close(); }
 
 void ScanRecorder::start() {
   const auto cur_time = timing::getNowUs();
-  record_file_->open("scan_" + std::to_string(cur_time) + ".pbscan");
+  filename_ = "scan_" + std::to_string(cur_time) + ".pbscan";
+  record_file_->open(filename_);
   has_started_ = true;
 }
 
 void ScanRecorder::start(const std::string &filename) {
-  record_file_->open(filename);
+  filename_ = filename;
+  record_file_->open(filename_);
   has_started_ = true;
 }
 
@@ -85,4 +87,6 @@ void ScanRecorder::stop() {
   record_file_->close();
   has_started_ = false;
 }
+
+const std::string &ScanRecorder::getFilename() const { return filename_; }
 } // namespace msensor

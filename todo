@@ -7,10 +7,10 @@
 
 - Program ADC gain in the class
 
-
 - Sensor Bus
  - Decouple Sensor Getter from Getting sensor data. 
  - Can be done in the gRPC service.
 
 - IMU via gRPC consumes entire CPU.
 - Cleanup individual sensor publishers (e.g. sim_publisher) and merge into one executable with config file input
+- Add sequence number to sensor data for better debugging and synchronization

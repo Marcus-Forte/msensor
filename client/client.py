@@ -161,10 +161,10 @@ def stream_lidar(
     last_timestamp = 0
 
     cloud = server.scene.add_point_cloud(
-        name="/rplidar",
+        name="/lidar",
         points=np.empty((0, 3), dtype=np.float32),
         colors=np.empty((0, 3), dtype=np.uint8),
-        point_size=0.05,
+        point_size=0.01,
         point_shape="rounded",
     )
 
