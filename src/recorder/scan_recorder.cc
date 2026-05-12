@@ -1,22 +1,10 @@
 #include "recorder/scan_recorder.hh"
 #include "recording.pb.h"
 #include "timing/timing.hh"
+#include "conversions.hh"
 #include <mutex>
 
 std::mutex g_mutex;
-
-namespace {
-void toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan,
-                sensors::PointCloud3 *proto_msg) {
-  for (const auto &pt : *scan->points) {
-    auto *proto_pt = proto_msg->add_points();
-    proto_pt->set_x(pt.x);
-    proto_pt->set_y(pt.y);
-    proto_pt->set_z(pt.z);
-  }
-  proto_msg->set_timestamp(scan->timestamp);
-}
-} // namespace
 
 namespace msensor {
 
@@ -43,8 +31,7 @@ void ScanRecorder::record(const std::shared_ptr<Scan3DI> &scan) {
     return;
 
   sensors::RecordingEntry entry;
-  auto *proto_msg = entry.mutable_scan();
-  toProtobuf(scan, proto_msg);
+  *entry.mutable_scan() = toProtobuf(scan);
 
   auto bytes = entry.ByteSizeLong();
   {

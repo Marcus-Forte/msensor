@@ -29,7 +29,7 @@ CameraServiceImpl::CameraServiceImpl(std::shared_ptr<msensor::ICamera> camera)
 
     msensor::CameraFrame frame;
     if (camera_->read(frame)) {
-      writer->Write(toGRPC(frame));
+      writer->Write(toProtobuf(frame));
     }
   }
 

@@ -2,19 +2,19 @@ syntax = "proto3";
 
 package sensors;
 
-message Point3 {
-    float x=1;
-    float y=2;
-    float z=3;
-    optional float r=4;
-    optional float g=5;
-    optional float b=6;
-    optional uint32 intensity=7;
-}
-
 message PointCloud3 { 
-    repeated Point3 points = 1;
-    optional uint64 timestamp = 2;
+    uint64 timestamp = 1;
+    repeated float x = 2 [packed=true];
+    repeated float y = 3 [packed=true];
+    repeated float z = 4 [packed=true];
+
+    repeated uint32 intensity = 5 [packed=true];
+
+    // Optional color information
+    repeated float r = 6 [packed=true];
+    repeated float g = 7 [packed=true];
+    repeated float b = 8 [packed=true];
+
 }
 
 message LidarStreamRequest {

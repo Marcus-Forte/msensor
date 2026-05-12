@@ -1,5 +1,5 @@
 #include "adc/ADS1115.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 #include <cstdlib>
 #include <cstring>

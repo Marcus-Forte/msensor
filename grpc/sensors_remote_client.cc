@@ -66,7 +66,7 @@ void SensorsRemoteClient::start() {
         reader = lidar_stub_->getLidarScan(service_context_.get(),
                                            request); // retry
       } else {
-        scan_queue_.push(fromGRPC(msg));
+        scan_queue_.push(fromProtobuf(msg));
       }
     }
   });
@@ -87,7 +87,7 @@ void SensorsRemoteClient::start() {
         service_context_ = std::make_unique<grpc::ClientContext>();
         imu_reader = imu_stub_->getImuData(service_context_.get(), request);
       } else {
-        imu_queue_.push(fromGRPC(msg));
+        imu_queue_.push(fromProtobuf(msg));
       }
     }
   });

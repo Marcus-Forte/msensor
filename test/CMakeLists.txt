@@ -7,7 +7,7 @@ gtest_discover_tests(test_recorder)
 
 add_executable(test_client_server src/test_client_server.cc)
 target_include_directories(test_client_server PRIVATE mocks)
-target_link_libraries(test_client_server sensors_server gtest_main gtest gmock)
+target_link_libraries(test_client_server msensor::server gtest_main gtest gmock)
 gtest_discover_tests(test_client_server)
 
 add_executable(draft draft.cc)

@@ -3,7 +3,7 @@
 #include <thread>
 
 #include "lidar/mid360.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 void printUsage() {
   std::cout << "Usage: app [config] [accusamples] [mode: 0, 1,2,3]"

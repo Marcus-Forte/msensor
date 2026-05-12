@@ -42,7 +42,7 @@ private:
       /// TODO: can we prevent sleep??
       std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
-    response_ = toGRPC(scan);
+    response_ = toProtobuf(scan);
     StartWrite(&response_);
   }
 
@@ -117,7 +117,7 @@ private:
     auto filtered = std::make_shared<msensor::Scan3DI>();
     filtered->timestamp = timing::getNowUs();
     grid.filter(*filtered->points);
-    response_ = toGRPC(filtered);
+    response_ = toProtobuf(filtered);
     StartWrite(&response_);
   }
 

@@ -10,7 +10,7 @@
 #include "imu/icm-20948_defs.h"
 #include "lidar/mid360.hh"
 #include "lidar/rp_lidar.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 constexpr int DefaultI2cBus = 1;
 constexpr uint8_t DefaultADSAddress = 0x48;

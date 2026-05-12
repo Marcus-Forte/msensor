@@ -7,7 +7,7 @@ import time
 import numpy as np
 import viser
 import viser.uplot
-from typing import Optional, Sequence
+from typing import Optional
 
 from proto_gen import (
     camera_pb2,
@@ -23,23 +23,23 @@ from proto_gen import (
 SERVER_ADDR = "192.168.178.129:50051" # Robot
 
 
-def _to_viser_pointcloud_colors(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
-    colors = np.empty((len(points), 3), dtype=np.uint8)
-    for i, point in enumerate(points):
-        rgb = int2rgb(point.intensity)
-        colors[i, 0] = rgb[0] * 255
-        colors[i, 1] = rgb[1] * 255
-        colors[i, 2] = rgb[2] * 255
-    return colors
+def _to_viser_lidar(scan: lidar_pb2.PointCloud3) -> tuple[np.ndarray, np.ndarray]:
+    x = np.asarray(scan.x, dtype=np.float32)
+    y = np.asarray(scan.y, dtype=np.float32)
+    z = np.asarray(scan.z, dtype=np.float32)
+    intensity = np.asarray(scan.intensity, dtype=np.uint32)
 
+    point_count = x.size
+    if y.size != point_count or z.size != point_count or intensity.size != point_count:
+        return (
+            np.empty((0, 3), dtype=np.float32),
+            np.empty((0, 3), dtype=np.uint8),
+        )
 
-def _to_viser_pointcloud(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
-    arr = np.empty((len(points), 3), dtype=np.float32)
-    for i, point in enumerate(points):
-        arr[i, 0] = point.x
-        arr[i, 1] = point.y
-        arr[i, 2] = point.z
-    return arr
+    points = np.column_stack((x, y, z))
+    colors = np.asarray([int2rgb(int(value)) for value in intensity], dtype=np.float32)
+    colors = np.clip(colors * 255.0, 0, 255).astype(np.uint8)
+    return points, colors
 
 
 def _decode_camera_frame(frame: camera_pb2.CameraStreamReply) -> Optional[np.ndarray]:
@@ -130,7 +130,7 @@ def main():
     #         scan: lidar_pb2.PointCloud3
 
     #         ts = int(scan.timestamp) if scan.HasField("timestamp") else 0
-    #         n = len(scan.points)
+    #         n = len(scan.x)
     #         if last_timestamp is None:
     #             dt_ms = 0
     #         else:
@@ -138,8 +138,7 @@ def main():
     #         last_timestamp = ts
 
     #         print(f"LiDAR scan: points={n} timestamp={ts} dt={dt_ms}ms")
-    #         cloud.points = _to_viser_pointcloud(scan.points)
-    #         cloud.colors = _to_viser_pointcloud_colors(scan.points)
+    #         cloud.points, cloud.colors = _to_viser_lidar(scan)
 
     ## Stream Camera Frames
 
@@ -225,7 +224,7 @@ def main():
     #         scan: lidar_pb2.PointCloud3
 
     #         ts = int(scan.timestamp) if scan.HasField("timestamp") else 0
-    #         n = len(scan.points)
+    #         n = len(scan.x)
     #         if last_timestamp is None:
     #             dt_ms = 0
     #         else:
@@ -233,8 +232,7 @@ def main():
     #         last_timestamp = ts
 
     #         print(f"LiDAR scan: points={n} timestamp={ts} dt={dt_ms}ms")
-    #         cloud.points = _to_viser_pointcloud(scan.points)
-    #         cloud.colors = _to_viser_pointcloud_colors(scan.points)
+    #         cloud.points, cloud.colors = _to_viser_lidar(scan)
 
 
 if __name__ == "__main__":

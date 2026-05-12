@@ -6,13 +6,13 @@
 #include "camera/sim_camera.hh"
 #include "imu/sim_imu.hh"
 #include "lidar/sim_lidar.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 void print_usage() { std::cout << "Usage: sim_publisher" << std::endl; }
 
 int main(int argc, char **argv) {
 
-  auto sim_lidar = std::make_shared<msensor::SimLidar>(true);
+  auto sim_lidar = std::make_shared<msensor::SimLidar>(false);
   auto sim_imu = std::make_shared<msensor::SimImu>();
   auto sim_camera = std::make_shared<msensor::SimCamera>();
   auto sim_adc = std::make_shared<msensor::SimAdc>();

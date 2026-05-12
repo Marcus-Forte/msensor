@@ -2,7 +2,7 @@ import argparse
 import logging
 import threading
 import time
-from typing import Optional, Sequence
+from typing import Optional
 from colormap import int2rgb
 
 logger = logging.getLogger(__name__)
@@ -24,23 +24,30 @@ DEFAULT_ADC_CHANNEL = 0
 DEFAULT_ADC_PERIOD_SEC = 0.5
 
 
-def to_viser_pointcloud_colors(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
-    colors = np.empty((len(points), 3), dtype=np.uint8)
-    for i, point in enumerate(points):
-        rgb = int2rgb(point.intensity)
-        colors[i, 0] = rgb[0] * 255
-        colors[i, 1] = rgb[1] * 255
-        colors[i, 2] = rgb[2] * 255
-    return colors
+def to_viser_lidar(scan: lidar_pb2.PointCloud3) -> tuple[np.ndarray, np.ndarray]:
+    x = np.asarray(scan.x, dtype=np.float32)
+    y = np.asarray(scan.y, dtype=np.float32)
+    z = np.asarray(scan.z, dtype=np.float32)
+    intensity = np.asarray(scan.intensity, dtype=np.uint32)
 
+    point_count = x.size
+    if y.size != point_count or z.size != point_count or intensity.size != point_count:
+        logger.warning(
+            "Skipping malformed LiDAR scan with field sizes x=%d y=%d z=%d intensity=%d",
+            x.size,
+            y.size,
+            z.size,
+            intensity.size,
+        )
+        return (
+            np.empty((0, 3), dtype=np.float32),
+            np.empty((0, 3), dtype=np.uint8),
+        )
 
-def to_viser_pointcloud(points: Sequence[lidar_pb2.Point3]) -> np.ndarray:
-    arr = np.empty((len(points), 3), dtype=np.float32)
-    for i, point in enumerate(points):
-        arr[i, 0] = point.x
-        arr[i, 1] = point.y
-        arr[i, 2] = point.z
-    return arr
+    points = np.column_stack((x, y, z))
+    colors = np.asarray([int2rgb(int(value)) for value in intensity], dtype=np.float32)
+    colors = np.clip(colors * 255.0, 0, 255).astype(np.uint8)
+    return points, colors
 
 
 def setup_imu_plots(server: viser.ViserServer):
@@ -124,6 +131,7 @@ def stream_imu(
     while not stop_event.is_set():
         try:
             for imu in stub.getImuData(request):
+                logger.info(f"Got IMU data: @ {imu.timestamp}")
                 if stop_event.is_set():
                     break
                 sample += 1
@@ -173,12 +181,11 @@ def stream_lidar(
             for scan in stub.getLidarScan(request):
                 scan: lidar_pb2.PointCloud3
 
-                logger.debug(f"Got points: {len(scan.points)} at {scan.timestamp}")
+                logger.info(f"Got lidar points: {len(scan.x)} at {scan.timestamp}")
                 delta_t = scan.timestamp - last_timestamp
                 logger.debug(f" DeltaT: {delta_t} ms")
                 last_timestamp = scan.timestamp
-                cloud.points = to_viser_pointcloud(scan.points)
-                cloud.colors = to_viser_pointcloud_colors(scan.points)
+                cloud.points, cloud.colors = to_viser_lidar(scan)
 
         except grpc.RpcError as exc:
             logger.info(f"LiDAR stream error: {exc.code().name} - {exc.details()}")
@@ -199,7 +206,7 @@ def stream_camera(
         try:
             for camera_data in stub.getCameraFrame(request):
                 frame_count += 1
-                logger.debug(
+                logger.info(
                     f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.timestamp}"
                 )
 

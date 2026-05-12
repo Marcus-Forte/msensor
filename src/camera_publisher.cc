@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "camera/opencv_camera.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 using namespace msensor;
 

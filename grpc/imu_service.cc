@@ -28,7 +28,7 @@ ImuServiceImpl::getImuData(::grpc::ServerContext *context,
 
   while (!context->IsCancelled()) {
     if (const auto imu_data = imu_->getImuData()) {
-      writer->Write(toGRPC(*imu_data));
+      writer->Write(toProtobuf(*imu_data));
     }
     std::this_thread::sleep_for(std::chrono::microseconds(100));
   }

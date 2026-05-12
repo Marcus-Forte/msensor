@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "lidar/rp_lidar.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 void print_usage() {
   std::cout << "Usage: rplidar_publisher [serial device path]" << std::endl;

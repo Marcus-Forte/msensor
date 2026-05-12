@@ -1,5 +1,5 @@
 #include "sensors_remote_client.hh"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 #include <gtest/gtest.h>
 
 class TestClientServer : public ::testing::Test {

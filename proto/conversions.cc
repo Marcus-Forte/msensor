@@ -3,35 +3,63 @@
 
 #include "conversions.hh"
 
-std::shared_ptr<msensor::Scan3DI> fromGRPC(const sensors::PointCloud3 &msg) {
+std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg) {
 
   auto scan = std::make_shared<msensor::Scan3DI>();
-
-  scan->points->reserve(msg.points_size());
-  for (const auto &pt : msg.points()) {
-    scan->points->emplace_back(pt.x(), pt.y(), pt.z());
+  if (msg.x_size() != msg.y_size() || msg.x_size() != msg.z_size() || msg.x_size() != msg.intensity_size()) {
+    return scan; 
   }
+
+  const float *x_data = msg.x().data();
+  const float *y_data = msg.y().data();
+  const float *z_data = msg.z().data();
+  const uint32_t *intensity_data = msg.intensity().data();
+
+  scan->points->resize(msg.x_size());
+
+  for(int i = 0; i < msg.x_size(); ++i) {
+    (*scan->points)[i].x = x_data[i];
+    (*scan->points)[i].y = y_data[i];
+    (*scan->points)[i].z = z_data[i];
+    (*scan->points)[i].intensity = intensity_data[i];
+  }
+
   scan->timestamp = msg.timestamp();
 
   return scan;
 }
 
-sensors::PointCloud3 toGRPC(const std::shared_ptr<msensor::Scan3DI> &scan) {
+sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
   sensors::PointCloud3 point_cloud;
 
+  if (!scan || !scan->points) {
+    return point_cloud;
+  }
+
   point_cloud.set_timestamp(scan->timestamp);
-  for (const auto &point : *scan->points) {
-    auto pt = point_cloud.add_points();
-    pt->set_x(point.x);
-    pt->set_y(point.y);
-    pt->set_z(point.z);
-    pt->set_intensity(point.intensity);
+
+  auto *x = point_cloud.mutable_x();
+  auto *y = point_cloud.mutable_y();
+  auto *z = point_cloud.mutable_z();
+  auto *intensity = point_cloud.mutable_intensity();
+
+  const auto point_count = static_cast<int>(scan->points->size());
+  x->Reserve(point_count);
+  y->Reserve(point_count);
+  z->Reserve(point_count);
+  intensity->Reserve(point_count);
+
+  for (const auto &point : scan->points->points) {
+    x->Add(point.x);
+    y->Add(point.y);
+    z->Add(point.z);
+    intensity->Add(static_cast<uint32_t>(point.intensity));
   }
 
   return point_cloud;
 }
 
-msensor::IMUData fromGRPC(const sensors::IMUData &msg) {
+msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
   msensor::IMUData imu_data;
   imu_data.ax = msg.ax();
   imu_data.ay = msg.ay();
@@ -43,7 +71,7 @@ msensor::IMUData fromGRPC(const sensors::IMUData &msg) {
   return imu_data;
 }
 
-sensors::IMUData toGRPC(msensor::IMUData imu_data) {
+sensors::IMUData toProtobuf(msensor::IMUData imu_data) {
   sensors::IMUData grpc_data;
   grpc_data.set_ax(imu_data.ax);
   grpc_data.set_ay(imu_data.ay);
@@ -55,8 +83,8 @@ sensors::IMUData toGRPC(msensor::IMUData imu_data) {
   return grpc_data;
 }
 
-sensors::CameraStreamReply toGRPC(const msensor::CameraFrame &frame,
-                                  int quality) {
+sensors::CameraStreamReply toProtobuf(const msensor::CameraFrame &frame,
+                                      int quality) {
   sensors::CameraStreamReply reply;
   reply.set_width(frame.mat.cols);
   reply.set_height(frame.mat.rows);

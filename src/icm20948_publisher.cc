@@ -4,7 +4,7 @@
 
 #include "imu/icm-20948.h"
 #include "imu/icm-20948_defs.h"
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 void print_usage() {
   std::cout << "Usage: imu_publisher [i2c device] " << std::endl;

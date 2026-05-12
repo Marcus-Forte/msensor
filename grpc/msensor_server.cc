@@ -1,7 +1,7 @@
 #include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server_builder.h>
 
-#include "sensors_server.hh"
+#include "msensor_server.hh"
 
 SensorsServer::SensorsServer(std::shared_ptr<msensor::IAdc> adc,
                              std::shared_ptr<msensor::ICamera> camera,
