@@ -1,5 +1,22 @@
 services:
 
+  # 1. The PTP Grandmaster Clock Service (Time sync with sensors)
+  ptp-master:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM debian:trixie-slim
+        RUN apt-get update && \
+            apt-get install -y --no-install-recommends ptpd && \
+            rm -rf /var/lib/apt/lists/*
+        CMD ["ptpd", "-M", "-i", "eth0", "-C"]
+    container_name: livox_ptp_master
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+    restart: always
+
   msensor:
     image: mdnf1992/msensor
     init: true
@@ -8,7 +25,7 @@ services:
     privileged: true
     network_mode: host
     command: ["sensor_publisher", "/cfg/publisher_config.json"]
-    profiles: ["robot"]
+    # profiles: ["robot"]
     ports:
       - "50051:50051"
     volumes:

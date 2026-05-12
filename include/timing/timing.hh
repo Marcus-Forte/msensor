@@ -3,6 +3,21 @@
 #include <cstdint>
 
 namespace timing {
+
+/**
+ * @brief Get epoch time in microseconds.
+ *
+ * @return uint64_t time in microseconds.
+ */
+uint64_t getEpochTimeUs();
+
+/**
+ * @brief Get epoch time in nanoseconds.
+ *
+ * @return uint64_t time in nanoseconds.
+ */
+uint64_t getEpochTimeNs();
+
 /**
  * @brief Get current time in microsseconds. Uses system clock.
  *
