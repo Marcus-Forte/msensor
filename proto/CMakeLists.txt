@@ -62,7 +62,6 @@ target_link_libraries(sensors_proto INTERFACE lidar_proto imu_proto camera_proto
 add_library(sensors_grpc INTERFACE)
 target_link_libraries(sensors_grpc INTERFACE lidar_grpc imu_grpc camera_grpc adc_grpc)
 
-
 # Namespaced aliases for submodule consumers
 add_library(msensor::lidar_proto ALIAS lidar_proto)
 add_library(msensor::lidar_grpc ALIAS lidar_grpc)
