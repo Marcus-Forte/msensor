@@ -6,6 +6,7 @@
 namespace msensor {
 
 std::optional<IMUData> SimImu::getImuData() {
+  static uint32_t sequence_number = 0;
   std::random_device rd;
   std::mt19937 gen(rd());
 
@@ -13,13 +14,14 @@ std::optional<IMUData> SimImu::getImuData() {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(20)); // 50 Hz.
   IMUData data;
+  data.header = Header{timing::getNowNs(), sequence_number++};
   data.ax = dis(gen);
   data.ay = dis(gen);
   data.az = dis(gen);
   data.gx = dis(gen);
   data.gy = dis(gen);
   data.gz = dis(gen);
-  data.timestamp = timing::getNowUs();
+
   return data;
 }
 

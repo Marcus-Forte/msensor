@@ -1,5 +1,5 @@
-#include "sensors_remote_client.hh"
 #include "msensor_server.hh"
+#include "sensors_remote_client.hh"
 #include <gtest/gtest.h>
 
 class TestClientServer : public ::testing::Test {
@@ -36,9 +36,9 @@ TEST_F(TestClientServer, DISABLED_TestServer) {
   // Push data into the queues
   auto scan = std::make_shared<msensor::Scan3DI>();
   scan->points->emplace_back(1, 2, 3);
-  scan->timestamp = 10;
+  scan->header.timestamp = 10;
 
-  auto imu = msensor::IMUData(1, 2, 3, 4, 5, 6, 7);
+  auto imu = msensor::IMUData{msensor::Header{7, 0}, 1, 2, 3, 4, 5, 6};
 
   // Wait for data to reach the client
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -50,7 +50,7 @@ TEST_F(TestClientServer, DISABLED_TestServer) {
 
   const auto &scan_points = *scan_read->points;
 
-  EXPECT_EQ(scan_read->timestamp, 10);
+  EXPECT_EQ(scan_read->header.timestamp, 10);
   ASSERT_GE(scan_read->points->size(), 1);
   EXPECT_EQ(scan_points[0].x, 1);
   EXPECT_EQ(scan_points[0].y, 2);

@@ -11,7 +11,7 @@ constexpr uint32_t g_baudRate = 115200;
 
 std::shared_ptr<Scan3DI>
 toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count) {
-
+  static uint32_t sequence_number = 0;
   std::shared_ptr<Scan3DI> scan = std::make_shared<Scan3DI>();
   scan->points = std::make_shared<PointCloud3I>();
   scan->points->reserve(count);
@@ -26,7 +26,7 @@ toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count) {
     float y = sin(angle_in_pi) * dist_m;
     scan->points->emplace_back(x, y, 0, 0);
   }
-  scan->timestamp = timing::getNowNs();
+  scan->header = {Header{timing::getNowNs(), sequence_number++}};
 
   return scan;
 }

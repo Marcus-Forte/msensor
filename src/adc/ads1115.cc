@@ -92,8 +92,10 @@ ADS1115::ADS1115(int i2c_device, uint8_t i2c_ads_address)
 }
 
 std::optional<AdcSample> ADS1115::readSingleEnded() const {
+  static uint32_t sequence_number = 0;
   const auto raw = readConversion();
-  return AdcSample{convertRawToVoltage(raw) * external_gain_,
+  return AdcSample{Header{timing::getNowUs(), sequence_number++},
+                   convertRawToVoltage(raw) * external_gain_,
                    timing::getNowUs()};
 }
 

@@ -17,7 +17,8 @@ bool SimCamera::read(CameraFrame &frame) {
           cv::Vec3b(x % factor, y % factor, (x + y) % factor);
     }
   }
-  frame.timestamp = timing::getNowNs();
+  static uint32_t sequence_number = 0;
+  frame.header = {timing::getNowNs(), sequence_number++};
 
   std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 FPS
   return true;

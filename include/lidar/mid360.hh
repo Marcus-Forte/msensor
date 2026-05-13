@@ -33,7 +33,7 @@ public:
    * data from getScan(). Typically the number of points per `getScan` is 96 *
    * `accumulate_scan_count`.
    */
-  Mid360(const std::string &&config, size_t accumulate_scan_count);
+  Mid360(std::string config, size_t accumulate_scan_count);
   /// Initialize the Livox driver and connect to the device.
   void init() override;
 

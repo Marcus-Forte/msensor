@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "header.proto";
+
 package sensors;
 
 message AdcDataRequest {
@@ -7,8 +9,8 @@ message AdcDataRequest {
 }
 
 message AdcData {
-    float sample = 1;
-    optional uint64 timestamp = 2;
+    Header header = 1;
+    float sample = 2;
 }
 
 service AdcService {

@@ -1,5 +1,6 @@
 #include "lidar/mid360.hh"
 
+#include <algorithm>
 #include <future>
 #include <livox_lidar_def.h>
 
@@ -14,30 +15,28 @@ namespace msensor {
 constexpr size_t g_max_queue_elements = 50;
 constexpr size_t g_max_scan_points_per_packet = 96;
 
-using PointCloudPacketT =
-    std::array<pcl::PointXYZI, g_max_scan_points_per_packet>;
-
 namespace {
 
-PointCloudPacketT convertEthPacket(const LivoxLidarEthernetPacket *eth_packet,
-                                   unsigned int data_pts) {
+void convertEthPacketInto(const LivoxLidarEthernetPacket *eth_packet,
+                          unsigned int data_pts,
+                          pcl::PointCloud<pcl::PointXYZI> &dest) {
   const auto *data_ = reinterpret_cast<const LivoxLidarCartesianHighRawPoint *>(
       eth_packet->data);
-
-  PointCloudPacketT pointcloud_data;
-  for (auto &point : pointcloud_data) {
-    point.x = static_cast<float>(data_->x) / 1000.0F;
-    point.y = static_cast<float>(data_->y) / 1000.0F;
-    point.z = static_cast<float>(data_->z) / 1000.0F;
-    point.intensity = data_->reflectivity;
-    data_++;
+  const size_t count =
+      std::min(static_cast<size_t>(data_pts), g_max_scan_points_per_packet);
+  const size_t offset = dest.size();
+  dest.resize(offset + count);
+  for (size_t i = 0; i < count; ++i) {
+    dest[offset + i].x = static_cast<float>(data_[i].x) / 1000.0F;
+    dest[offset + i].y = static_cast<float>(data_[i].y) / 1000.0F;
+    dest[offset + i].z = static_cast<float>(data_[i].z) / 1000.0F;
+    dest[offset + i].intensity = data_[i].reflectivity;
   }
-  return pointcloud_data;
 }
 } // namespace
 
-Mid360::Mid360(const std::string &&config, size_t accumulate_scan_count)
-    : config_{config}, accumulate_scan_count_(accumulate_scan_count),
+Mid360::Mid360(std::string config, size_t accumulate_scan_count)
+    : config_{std::move(config)}, accumulate_scan_count_(accumulate_scan_count),
       scan_queue_(g_max_queue_elements), imu_queue_(g_max_queue_elements),
       scan_count_(0) {}
 
@@ -148,12 +147,15 @@ void Mid360::init() {
         if (data == nullptr) {
           return;
         }
+
+        static uint32_t sequence_number = 0;
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
         auto *data_ = reinterpret_cast<LivoxLidarImuRawPoint *>(data->data);
 
-        auto imu_data = IMUData(data_->acc_x, data_->acc_y, data_->acc_z,
-                                data_->gyro_x, data_->gyro_y, data_->gyro_z,
-                                *reinterpret_cast<uint64_t *>(data->timestamp));
+        auto imu_data = IMUData(
+            {*reinterpret_cast<uint64_t *>(data->timestamp), sequence_number++},
+            data_->acc_x, data_->acc_y, data_->acc_z, data_->gyro_x,
+            data_->gyro_y, data_->gyro_z);
         this_->imu_queue_.push(imu_data);
       },
       this);
@@ -166,17 +168,18 @@ void Mid360::init() {
         }
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
 
-        const auto cloud = convertEthPacket(data, data->dot_num);
-
+        static uint32_t sequence_number = 0;
         if (!this_->accumulated_pointcloud_data_) {
           this_->accumulated_pointcloud_data_ = std::make_shared<Scan3DI>();
-          this_->accumulated_pointcloud_data_->timestamp =
-              *reinterpret_cast<uint64_t *>(data->timestamp);
+          this_->accumulated_pointcloud_data_->points->reserve(
+              this_->accumulate_scan_count_ * g_max_scan_points_per_packet);
+          this_->accumulated_pointcloud_data_->header =
+              Header{*reinterpret_cast<uint64_t *>(data->timestamp),
+                     sequence_number++};
         }
 
-        this_->accumulated_pointcloud_data_->points->insert(
-            this_->accumulated_pointcloud_data_->points->end(), cloud.begin(),
-            cloud.end());
+        convertEthPacketInto(data, data->dot_num,
+                             *this_->accumulated_pointcloud_data_->points);
 
         if (++this_->scan_count_ % this_->accumulate_scan_count_ == 0) {
 
@@ -192,7 +195,7 @@ std::shared_ptr<Scan3DI> Mid360::getScan() {
     return nullptr;
   }
 
-  const auto last = scan_queue_.front();
+  auto last = std::move(scan_queue_.front());
   scan_queue_.pop();
   return last;
 }
@@ -201,7 +204,7 @@ std::optional<IMUData> Mid360::getImuData() {
   if (imu_queue_.empty()) {
     return std::nullopt;
   }
-  const auto last = imu_queue_.front();
+  auto last = std::move(imu_queue_.front());
   imu_queue_.pop();
   return last;
 }

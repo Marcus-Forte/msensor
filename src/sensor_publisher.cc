@@ -16,9 +16,7 @@ constexpr int DefaultI2cBus = 1;
 constexpr uint8_t DefaultADSAddress = 0x48;
 
 static void print_usage() {
-  std::cout
-      << "Usage: sensor_publisher [config.json]"
-      << std::endl;
+  std::cout << "Usage: sensor_publisher [config.json]" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -33,8 +31,9 @@ int main(int argc, char **argv) {
   }
 
   const std::filesystem::path config_path =
-      argc == 2 ? std::filesystem::path(argv[1]) : msensor::Config::defaultConfigPath();
-    const msensor::Config config = msensor::Config::fromFile(config_path);
+      argc == 2 ? std::filesystem::path(argv[1])
+                : msensor::Config::defaultConfigPath();
+  const msensor::Config config = msensor::Config::fromFile(config_path);
 
   std::shared_ptr<msensor::ILidar> lidar = nullptr;
   std::shared_ptr<msensor::IImu> imu = nullptr;
@@ -52,8 +51,7 @@ int main(int argc, char **argv) {
       return 1;
     } else if (!std::filesystem::exists(config.mid360.config)) {
       std::cerr << "mid360 config file: " << config.mid360.config
-                << " does not exist. Exiting."
-                << std::endl;
+                << " does not exist. Exiting." << std::endl;
       return 1;
     } else {
       auto mid360 = std::make_shared<msensor::Mid360>(
@@ -87,9 +85,8 @@ int main(int argc, char **argv) {
 
   std::shared_ptr<msensor::IAdc> adc = nullptr;
   if (config.ads1115.enable) {
-    auto ads1115 =
-        std::make_shared<msensor::ADS1115>(config.ads1115.i2c_bus,
-                                           DefaultADSAddress);
+    auto ads1115 = std::make_shared<msensor::ADS1115>(config.ads1115.i2c_bus,
+                                                      DefaultADSAddress);
     ads1115->init(msensor::ADS1115::Gain::PLUS_MINUS_6_144,
                   msensor::ADS1115::DataRate::SPS_8,
                   static_cast<msensor::ADS1115::Channel>(0), external_gain);
@@ -97,9 +94,8 @@ int main(int argc, char **argv) {
   }
 
   if (config.icm20948.enable && !imu) {
-    auto icm20948 =
-        std::make_shared<msensor::ICM20948>(config.ads1115.i2c_bus,
-                                            ICM20948_ADDR0);
+    auto icm20948 = std::make_shared<msensor::ICM20948>(config.ads1115.i2c_bus,
+                                                        ICM20948_ADDR0);
     icm20948->init();
     icm20948->calibrate();
     imu = icm20948;

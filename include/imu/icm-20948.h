@@ -102,6 +102,7 @@ private:
   const int i2c_device_;
   const int i2c_icm_address_;
   int i2c_device_fd_;
+  
 };
 
 }

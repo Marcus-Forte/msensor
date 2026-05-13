@@ -80,8 +80,8 @@ int main(int argc, char **argv) {
       ++imu_entries_saved;
       recorded_sample = true;
       if (!has_reported_imu_flow) {
-        std::cout << "Connected to " << remote_address
-                  << "; Receiving IMU data" << std::endl;
+        std::cout << "Connected to " << remote_address << "; Receiving IMU data"
+                  << std::endl;
         has_reported_imu_flow = true;
       }
     }

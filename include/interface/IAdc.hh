@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <optional>
 
+#include "interface/Header.hh"
+
 namespace msensor {
 
 /**
@@ -19,7 +21,8 @@ enum class AdcChannel : uint8_t {
  * @brief ADC measurement sample.
  */
 struct AdcSample {
-  float voltage;      ///< Measured voltage in volts.
+  Header header; ///< Sample header containing timestamp and sequence number.
+  float voltage; ///< Measured voltage in volts.
   uint64_t timestamp; ///< Acquisition time in nanoseconds.
 };
 

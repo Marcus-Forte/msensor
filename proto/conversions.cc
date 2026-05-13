@@ -24,7 +24,7 @@ std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg) 
     (*scan->points)[i].intensity = intensity_data[i];
   }
 
-  scan->timestamp = msg.timestamp();
+  scan->header.timestamp = msg.header().timestamp();
 
   return scan;
 }
@@ -36,7 +36,8 @@ sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
     return point_cloud;
   }
 
-  point_cloud.set_timestamp(scan->timestamp);
+  point_cloud.mutable_header()->set_timestamp(scan->header.timestamp);
+  point_cloud.mutable_header()->set_sequence_number(scan->header.sequence_number);
 
   auto *x = point_cloud.mutable_x();
   auto *y = point_cloud.mutable_y();
@@ -61,13 +62,13 @@ sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
 
 msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
   msensor::IMUData imu_data;
+  imu_data.header.timestamp = msg.header().timestamp();
   imu_data.ax = msg.ax();
   imu_data.ay = msg.ay();
   imu_data.az = msg.az();
   imu_data.gx = msg.gx();
   imu_data.gy = msg.gy();
   imu_data.gz = msg.gz();
-  imu_data.timestamp = msg.timestamp();
   return imu_data;
 }
 
@@ -79,7 +80,8 @@ sensors::IMUData toProtobuf(msensor::IMUData imu_data) {
   grpc_data.set_gx(imu_data.gx);
   grpc_data.set_gy(imu_data.gy);
   grpc_data.set_gz(imu_data.gz);
-  grpc_data.set_timestamp(imu_data.timestamp);
+  grpc_data.mutable_header()->set_timestamp(imu_data.header.timestamp);
+  grpc_data.mutable_header()->set_sequence_number(imu_data.header.sequence_number);
   return grpc_data;
 }
 
@@ -98,7 +100,8 @@ sensors::CameraStreamReply toProtobuf(const msensor::CameraFrame &frame,
     reply.set_encoding(sensors::CameraEncoding::UNKNOWN);
   }
 
-  reply.set_timestamp(frame.timestamp);
+  reply.mutable_header()->set_timestamp(frame.header.timestamp);
+  reply.mutable_header()->set_sequence_number(frame.header.sequence_number);
 
   static std::vector<uchar> jpeg_buffer;
   const std::vector<int> jpeg_params{cv::IMWRITE_JPEG_QUALITY, quality};

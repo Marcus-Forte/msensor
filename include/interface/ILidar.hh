@@ -3,6 +3,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "interface/Header.hh"
+
 #include <stdint.h>
 
 namespace msensor {
@@ -20,9 +22,9 @@ using PointCloud3I = pcl::PointCloud<Point3I>;
  *
  */
 struct Scan3D {
-  Scan3D() : points(pcl::make_shared<PointCloud3>()), timestamp(0) {}
+  Scan3D() : points(pcl::make_shared<PointCloud3>()), header(Header{0, 0}) {}
+  Header header;
   PointCloud3::Ptr points;
-  uint64_t timestamp;
 };
 
 /**
@@ -30,9 +32,9 @@ struct Scan3D {
  *
  */
 struct Scan3DI {
-  Scan3DI() : points(pcl::make_shared<PointCloud3I>()), timestamp(0) {}
+  Scan3DI() : points(pcl::make_shared<PointCloud3I>()), header(Header{0, 0}) {}
+  Header header;
   PointCloud3I::Ptr points;
-  uint64_t timestamp;
 };
 
 /**

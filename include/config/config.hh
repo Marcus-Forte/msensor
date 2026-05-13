@@ -19,7 +19,9 @@ public:
   struct CameraConfig {
     bool enable = true;
     std::string pipeline =
-        "libcamerasrc ! video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! videoconvert ! appsink max-buffers=1 drop=true sync=false";
+        "libcamerasrc ! "
+        "video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! "
+        "videoconvert ! appsink max-buffers=1 drop=true sync=false";
   } camera;
 
   struct Mid360Config {

@@ -203,16 +203,17 @@ bool ICM20948::calibrate() const {
 }
 
 std::optional<IMUData> ICM20948::getImuData() {
+  static uint32_t sequence_number = 0;
   auto acc_data = get_acc_data();
   auto gyr_data = get_gyro_data();
   auto dbl_acc_data = convert_raw_data(acc_data, FACTOR_ACC_2G);
   auto dbl_gyr_data = convert_raw_data(gyr_data, FACTOR_GYRO_500DPS_RADS);
 
   return {IMUData{
+      Header{timing::getNowNs(), sequence_number},
       static_cast<float>(dbl_acc_data.x), static_cast<float>(dbl_acc_data.y),
       static_cast<float>(dbl_acc_data.z), static_cast<float>(dbl_gyr_data.x),
-      static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z),
-      timing::getNowUs()}};
+      static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z)}};
 }
 
 ICM20948::xyz_data_ ICM20948::get_acc_data() const {

@@ -3,8 +3,8 @@
 #include "timing/timing.hh"
 #include <atomic>
 #include <chrono>
-#include <thread>
 #include <pcl/filters/voxel_grid.h>
+#include <thread>
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
     : lidar_(lidar) {}
@@ -15,8 +15,7 @@ LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
 
 class LidarScanReactor : public grpc::ServerWriteReactor<sensors::PointCloud3> {
 public:
-  LidarScanReactor(std::shared_ptr<msensor::ILidar> lidar)
-      : lidar_(lidar) {
+  LidarScanReactor(std::shared_ptr<msensor::ILidar> lidar) : lidar_(lidar) {
     std::cout << "Start Lidar scan stream." << std::endl;
     NextWrite();
   }
@@ -50,13 +49,13 @@ private:
   sensors::PointCloud3 response_;
 };
 
-grpc::ServerWriteReactor<sensors::PointCloud3> *
-LidarServiceImpl::getLidarScan(grpc::CallbackServerContext * /*context*/,
-                               const sensors::LidarStreamRequest * /*request*/) {
+grpc::ServerWriteReactor<sensors::PointCloud3> *LidarServiceImpl::getLidarScan(
+    grpc::CallbackServerContext * /*context*/,
+    const sensors::LidarStreamRequest * /*request*/) {
   if (!lidar_) {
     auto *reactor = new LidarScanReactor(nullptr);
-    reactor->Finish(grpc::Status(grpc::StatusCode::UNAVAILABLE,
-                                 "Lidar not available"));
+    reactor->Finish(
+        grpc::Status(grpc::StatusCode::UNAVAILABLE, "Lidar not available"));
     return reactor;
   }
   return new LidarScanReactor(lidar_);
@@ -77,8 +76,8 @@ public:
   SubSampledLidarReactor(std::shared_ptr<msensor::ILidar> lidar)
       : lidar_(lidar) {
     std::cout << "Start subsampled Lidar scan stream." << std::endl;
-    StartRead(&request_);  // start listening for client messages
-    NextWrite();            // start pushing scans immediately
+    StartRead(&request_); // start listening for client messages
+    NextWrite();          // start pushing scans immediately
   }
 
   void OnReadDone(bool ok) override {
@@ -115,7 +114,8 @@ private:
     grid.setInputCloud(scan->points);
     grid.setLeafSize(vs, vs, vs);
     auto filtered = std::make_shared<msensor::Scan3DI>();
-    filtered->timestamp = timing::getNowUs();
+    filtered->header = scan->header;
+
     grid.filter(*filtered->points);
     response_ = toProtobuf(filtered);
     StartWrite(&response_);
@@ -133,8 +133,8 @@ LidarServiceImpl::getSubSampledLidarScan(
     grpc::CallbackServerContext * /*context*/) {
   if (!lidar_) {
     auto *reactor = new SubSampledLidarReactor(nullptr);
-    reactor->Finish(grpc::Status(grpc::StatusCode::UNAVAILABLE,
-                                 "Lidar not available"));
+    reactor->Finish(
+        grpc::Status(grpc::StatusCode::UNAVAILABLE, "Lidar not available"));
     return reactor;
   }
   return new SubSampledLidarReactor(lidar_);

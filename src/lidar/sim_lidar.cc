@@ -7,7 +7,8 @@
 namespace msensor {
 
 SimLidar::SimLidar(bool steady) : steady_(steady) {
-  std::cout << "SimLidar initialized. steady=" << std::boolalpha << steady_ << std::endl;
+  std::cout << "SimLidar initialized. steady=" << std::boolalpha << steady_
+            << std::endl;
 }
 
 void SimLidar::init() { std::cout << "init" << std::endl; }
@@ -18,6 +19,7 @@ void SimLidar::stopSampling() { std::cout << "stopSampling" << std::endl; }
 std::shared_ptr<Scan3DI> SimLidar::getScan() {
 
   const int nr_points = 2000;
+  static uint32_t sequence_number = 0;
 
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -38,7 +40,7 @@ std::shared_ptr<Scan3DI> SimLidar::getScan() {
     }
   }
 
-  scan->timestamp = timing::getNowNs();
+  scan->header = {Header{timing::getNowNs(), sequence_number++}};
 
   std::this_thread::sleep_for(std::chrono::milliseconds(25)); // 40 Hz.
 

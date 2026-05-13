@@ -3,19 +3,21 @@
 #include <optional>
 #include <stdint.h>
 
+#include "interface/Header.hh"
+
 namespace msensor {
 
 /**
  * @brief IMU sample containing accelerometer and gyroscope data.
  */
 struct IMUData {
-  float ax;           ///< Linear acceleration on X (m/s^2).
-  float ay;           ///< Linear acceleration on Y (m/s^2).
-  float az;           ///< Linear acceleration on Z (m/s^2).
-  float gx;           ///< Angular velocity around X (rad/s).
-  float gy;           ///< Angular velocity around Y (rad/s).
-  float gz;           ///< Angular velocity around Z (rad/s).
-  uint64_t timestamp; ///< Acquisition timestamp in nanoseconds.
+  Header header;
+  float ax; ///< Linear acceleration on X (m/s^2).
+  float ay; ///< Linear acceleration on Y (m/s^2).
+  float az; ///< Linear acceleration on Z (m/s^2).
+  float gx; ///< Angular velocity around X (rad/s).
+  float gy; ///< Angular velocity around Y (rad/s).
+  float gz; ///< Angular velocity around Z (rad/s).
 };
 
 /**

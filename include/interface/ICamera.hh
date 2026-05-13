@@ -2,11 +2,13 @@
 
 #include <opencv2/core.hpp>
 
+#include "interface/Header.hh"
+
 namespace msensor {
 
 struct CameraFrame {
+  Header header;
   cv::Mat mat;
-  uint64_t timestamp;
 };
 
 class ICamera {

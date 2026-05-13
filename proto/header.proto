@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package sensors;
+
+message Header {
+    uint64 timestamp = 1;
+    uint32 sequence_number = 2;
+}

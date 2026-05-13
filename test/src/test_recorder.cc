@@ -36,12 +36,12 @@ TEST_F(TestRecorder, record_scan) {
   // Add points. Zeros may not be serialized.
   scan->points->emplace_back(1, 2, 3);
   scan->points->emplace_back(1, 2, 3);
-  scan->timestamp = 10;
+  scan->header.timestamp = 10;
 
   recorder_->start();
   recorder_->record(scan);
 
-  EXPECT_EQ(stream.str().size(), 38);
+  EXPECT_EQ(stream.str().size(), 40);
 }
 
 TEST_F(TestRecorder, record_imu) {
@@ -51,11 +51,16 @@ TEST_F(TestRecorder, record_imu) {
   // redirect to string stream
   std::stringstream stream;
   EXPECT_CALL(*file_mock_, ostream()).WillRepeatedly(Return(&stream));
-  const auto imu =
-      IMUData(1, 2, 3, 4, 5, 6, 10); // Add values. Zeros may not be serialized.
+  const auto imu = IMUData{Header{10, 0},
+                           1,
+                           2,
+                           3,
+                           4,
+                           5,
+                           6}; // Add values. Zeros may not be serialized.
 
   recorder_->start();
   recorder_->record(imu);
 
-  EXPECT_EQ(stream.str().size(), 34); // 1 imu,
+  EXPECT_EQ(stream.str().size(), 36); // 1 imu,
 }

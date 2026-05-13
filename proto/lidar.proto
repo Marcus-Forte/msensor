@@ -1,9 +1,11 @@
 syntax = "proto3";
 
+import "header.proto";
+
 package sensors;
 
 message PointCloud3 { 
-    uint64 timestamp = 1;
+    Header header = 1;
     repeated float x = 2 [packed=true];
     repeated float y = 3 [packed=true];
     repeated float z = 4 [packed=true];

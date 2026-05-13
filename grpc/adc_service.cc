@@ -18,6 +18,8 @@ AdcServiceImpl::getAdcData(::grpc::ServerContext *context,
   }
 
   response->set_sample(adc_value->voltage);
-  response->set_timestamp(adc_value->timestamp);
+  response->mutable_header()->set_timestamp(adc_value->header.timestamp);
+  response->mutable_header()->set_sequence_number(
+      adc_value->header.sequence_number);
   return ::grpc::Status::OK;
 }
