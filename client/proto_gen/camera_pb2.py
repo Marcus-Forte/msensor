@@ -22,21 +22,22 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import header_pb2 as header__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x63\x61mera.proto\x12\x07sensors\"\x15\n\x13\x43\x61meraStreamRequest\"\x97\x01\n\x11\x43\x61meraStreamReply\x12\r\n\x05width\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\r\x12)\n\x08\x65ncoding\x18\x03 \x01(\x0e\x32\x17.sensors.CameraEncoding\x12\x16\n\ttimestamp\x18\x04 \x01(\x04H\x00\x88\x01\x01\x12\x12\n\nimage_data\x18\x05 \x01(\x0c\x42\x0c\n\n_timestamp*G\n\x0e\x43\x61meraEncoding\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x08\n\x04RGB8\x10\x01\x12\x08\n\x04\x42GR8\x10\x02\x12\t\n\x05GRAY8\x10\x03\x12\t\n\x05MJPEG\x10\x04\x32]\n\rCameraService\x12L\n\x0egetCameraFrame\x12\x1c.sensors.CameraStreamRequest\x1a\x1a.sensors.CameraStreamReply0\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0c\x63\x61mera.proto\x12\x07sensors\x1a\x0cheader.proto\"\x15\n\x13\x43\x61meraStreamRequest\"\x92\x01\n\x11\x43\x61meraStreamReply\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\r\n\x05width\x18\x02 \x01(\r\x12\x0e\n\x06height\x18\x03 \x01(\r\x12)\n\x08\x65ncoding\x18\x04 \x01(\x0e\x32\x17.sensors.CameraEncoding\x12\x12\n\nimage_data\x18\x05 \x01(\x0c*G\n\x0e\x43\x61meraEncoding\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x08\n\x04RGB8\x10\x01\x12\x08\n\x04\x42GR8\x10\x02\x12\t\n\x05GRAY8\x10\x03\x12\t\n\x05MJPEG\x10\x04\x32]\n\rCameraService\x12L\n\x0egetCameraFrame\x12\x1c.sensors.CameraStreamRequest\x1a\x1a.sensors.CameraStreamReply0\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'camera_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_CAMERAENCODING']._serialized_start=202
-  _globals['_CAMERAENCODING']._serialized_end=273
-  _globals['_CAMERASTREAMREQUEST']._serialized_start=25
-  _globals['_CAMERASTREAMREQUEST']._serialized_end=46
-  _globals['_CAMERASTREAMREPLY']._serialized_start=49
-  _globals['_CAMERASTREAMREPLY']._serialized_end=200
-  _globals['_CAMERASERVICE']._serialized_start=275
-  _globals['_CAMERASERVICE']._serialized_end=368
+  _globals['_CAMERAENCODING']._serialized_start=211
+  _globals['_CAMERAENCODING']._serialized_end=282
+  _globals['_CAMERASTREAMREQUEST']._serialized_start=39
+  _globals['_CAMERASTREAMREQUEST']._serialized_end=60
+  _globals['_CAMERASTREAMREPLY']._serialized_start=63
+  _globals['_CAMERASTREAMREPLY']._serialized_end=209
+  _globals['_CAMERASERVICE']._serialized_start=284
+  _globals['_CAMERASERVICE']._serialized_end=377
 # @@protoc_insertion_point(module_scope)

@@ -131,7 +131,7 @@ def stream_imu(
     while not stop_event.is_set():
         try:
             for imu in stub.getImuData(request):
-                logger.info(f"Got IMU data: @ {imu.timestamp}")
+                logger.info(f"Got IMU data: @ {imu.header.timestamp}, seq {imu.header.sequence_number}")
                 if stop_event.is_set():
                     break
                 sample += 1
@@ -181,10 +181,10 @@ def stream_lidar(
             for scan in stub.getLidarScan(request):
                 scan: lidar_pb2.PointCloud3
 
-                logger.info(f"Got lidar points: {len(scan.x)} at {scan.timestamp}")
-                delta_t = scan.timestamp - last_timestamp
+                logger.info(f"Got lidar points: {len(scan.x)} at {scan.header.timestamp}, sec {scan.header.sequence_number}")
+                delta_t = scan.header.timestamp - last_timestamp
                 logger.debug(f" DeltaT: {delta_t} ms")
-                last_timestamp = scan.timestamp
+                last_timestamp = scan.header.timestamp
                 cloud.points, cloud.colors = to_viser_lidar(scan)
 
         except grpc.RpcError as exc:
@@ -207,7 +207,7 @@ def stream_camera(
             for camera_data in stub.getCameraFrame(request):
                 frame_count += 1
                 logger.info(
-                    f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.timestamp}"
+                    f"Got camera frame {frame_count}: {camera_data.width}x{camera_data.height} encoding={camera_data.encoding} @ {camera_data.header.timestamp}, {camera_data.header.sequence_number}"
                 )
 
                 # Decode the image data
