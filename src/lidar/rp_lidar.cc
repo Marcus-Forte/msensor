@@ -1,9 +1,9 @@
-#include "lidar/rp_lidar.hh"
+#include "msensor/lidar/rp_lidar.hh"
 #include <format>
 #include <iostream>
 #include <stdexcept>
 
-#include "timing/timing.hh"
+#include "msensor/timing/timing.hh"
 
 namespace msensor {
 

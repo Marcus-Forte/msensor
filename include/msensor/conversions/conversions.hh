@@ -2,9 +2,9 @@
 
 #include "camera.pb.h"
 #include "imu.pb.h"
-#include "interface/ICamera.hh"
-#include "interface/IImu.hh"
-#include "interface/ILidar.hh"
+#include "msensor/interface/ICamera.hh"
+#include "msensor/interface/IImu.hh"
+#include "msensor/interface/ILidar.hh"
 #include "lidar.pb.h"
 
 /**

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "camera.grpc.pb.h"
-#include "interface/ICamera.hh"
+#include "msensor/interface/ICamera.hh"
 
 /**
  * @brief Implements the Camera gRPC service.

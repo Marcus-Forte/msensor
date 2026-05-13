@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/IImu.hh"
+#include "msensor/interface/IImu.hh"
 #include <stdint.h>
 
 

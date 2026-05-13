@@ -1,5 +1,5 @@
-#include "imu/sim_imu.hh"
-#include "timing/timing.hh"
+#include "msensor/imu/sim_imu.hh"
+#include "msensor/timing/timing.hh"
 #include <random>
 #include <thread>
 

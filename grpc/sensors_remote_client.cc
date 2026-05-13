@@ -2,7 +2,7 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
 
-#include "conversions.hh"
+#include "msensor/conversions/conversions.hh"
 #include "sensors_remote_client.hh"
 
 constexpr int g_idleTimeMs = 5;

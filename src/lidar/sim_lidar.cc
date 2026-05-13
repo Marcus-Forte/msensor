@@ -1,5 +1,5 @@
-#include "lidar/sim_lidar.hh"
-#include "timing/timing.hh"
+#include "msensor/lidar/sim_lidar.hh"
+#include "msensor/timing/timing.hh"
 #include <iostream>
 #include <random>
 #include <thread>

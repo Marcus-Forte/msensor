@@ -2,8 +2,8 @@
 
 #include <string>
 
-#include "interface/IImu.hh"
-#include "interface/ILidar.hh"
+#include "msensor/interface/IImu.hh"
+#include "msensor/interface/ILidar.hh"
 
 #include <boost/lockfree/spsc_queue.hpp>
 

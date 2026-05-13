@@ -6,9 +6,9 @@
 #include <thread>
 
 #include "imu.grpc.pb.h"
-#include "interface/IImu.hh"
-#include "interface/ILidar.hh"
 #include "lidar.grpc.pb.h"
+#include "msensor/interface/IImu.hh"
+#include "msensor/interface/ILidar.hh"
 
 /**
  * @brief This class connects to a SensorService and provides methods to get

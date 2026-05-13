@@ -1,4 +1,4 @@
-#include "recorder/scan_player.hh"
+#include "msensor/recorder/scan_player.hh"
 #include "recording.pb.h"
 #include <filesystem>
 #include <getopt.h>

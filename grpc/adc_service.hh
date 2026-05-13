@@ -1,7 +1,7 @@
 #pragma once
 
 #include "adc.grpc.pb.h"
-#include "interface/IAdc.hh"
+#include "msensor/interface/IAdc.hh"
 
 /**
  * @brief Implements the ADC gRPC service.

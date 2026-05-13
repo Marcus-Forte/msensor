@@ -1,4 +1,4 @@
-#include "lidar/mid360.hh"
+#include "msensor/lidar/mid360.hh"
 
 #include <algorithm>
 #include <future>
@@ -7,8 +7,8 @@
 #include <iostream>
 #include <string>
 
-#include "interface/ILidar.hh"
 #include "livox_lidar_api.h"
+#include "msensor/interface/ILidar.hh"
 
 namespace msensor {
 

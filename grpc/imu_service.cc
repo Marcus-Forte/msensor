@@ -1,6 +1,6 @@
 
 #include "imu_service.hh"
-#include "conversions.hh"
+#include "msensor/conversions/conversions.hh"
 #include <thread>
 
 ImuServiceImpl::ImuServiceImpl(std::shared_ptr<msensor::IImu> imu)

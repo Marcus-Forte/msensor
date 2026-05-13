@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/ILidar.hh"
+#include "msensor/interface/ILidar.hh"
 #include "sl_lidar_driver.h"
 #include <string>
 

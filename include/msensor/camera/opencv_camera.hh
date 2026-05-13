@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/ICamera.hh"
+#include "msensor/interface/ICamera.hh"
 #include <opencv2/videoio.hpp>
 
 namespace msensor {

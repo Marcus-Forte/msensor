@@ -12,4 +12,3 @@ target_link_libraries(msensor_server sensors_proto sensors_grpc IImu ILidar ICam
 target_include_directories(msensor_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(msensor::server ALIAS msensor_server)
-add_library(msensor::conversions ALIAS msensor_conversions)

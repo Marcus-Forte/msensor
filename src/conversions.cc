@@ -1,7 +1,7 @@
 
 #include <opencv2/imgcodecs.hpp>
 
-#include "msensor/conversions.hh"
+#include "msensor/conversions/conversions.hh"
 
 std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg) {
 

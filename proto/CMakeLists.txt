@@ -62,10 +62,6 @@ target_link_libraries(sensors_proto INTERFACE lidar_proto imu_proto camera_proto
 add_library(sensors_grpc INTERFACE)
 target_link_libraries(sensors_grpc INTERFACE lidar_grpc imu_grpc camera_grpc adc_grpc)
 
-add_library(msensor_conversions 
-conversions.cc)
-target_link_libraries(msensor_conversions sensors_proto sensors_grpc IImu ILidar ICamera)
-target_include_directories(msensor_conversions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Namespaced aliases for submodule consumers
 add_library(msensor::lidar_proto ALIAS lidar_proto)

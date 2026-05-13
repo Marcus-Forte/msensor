@@ -1,5 +1,5 @@
 #include "IFileMock.hh"
-#include "recorder/scan_recorder.hh"
+#include "msensor/recorder/scan_recorder.hh"
 #include <gtest/gtest.h>
 
 using namespace testing;

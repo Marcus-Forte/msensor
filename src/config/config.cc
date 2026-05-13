@@ -1,4 +1,4 @@
-#include "config/config.hh"
+#include "msensor/config/config.hh"
 
 #include <fstream>
 #include <sstream>

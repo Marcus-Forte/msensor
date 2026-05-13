@@ -1,5 +1,5 @@
-#include "camera/sim_camera.hh"
-#include "timing/timing.hh"
+#include "msensor/camera/sim_camera.hh"
+#include "msensor/timing/timing.hh"
 #include <thread>
 
 namespace msensor {

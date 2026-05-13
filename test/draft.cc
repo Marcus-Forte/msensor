@@ -1,6 +1,6 @@
-#include "file/file.hh"
-#include "recorder/scan_player.hh"
-#include "recorder/scan_recorder.hh"
+#include "msensor/file/file.hh"
+#include "msensor/recorder/scan_player.hh"
+#include "msensor/recorder/scan_recorder.hh"
 
 using namespace msensor;
 

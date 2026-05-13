@@ -1,4 +1,4 @@
-#include "adc/ADS1115.hh"
+#include "msensor/adc/ADS1115.hh"
 
 #include <fcntl.h>
 extern "C" {
@@ -8,7 +8,7 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "timing/timing.hh"
+#include "msensor/timing/timing.hh"
 
 #include <format>
 #include <iostream>

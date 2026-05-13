@@ -1,5 +1,5 @@
-#include "adc/sim_adc.hh"
-#include "timing/timing.hh"
+#include "msensor/adc/sim_adc.hh"
+#include "msensor/timing/timing.hh"
 #include <cstdlib>
 
 namespace msensor {

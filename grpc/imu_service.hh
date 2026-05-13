@@ -1,7 +1,7 @@
 #pragma once
 
 #include "imu.grpc.pb.h"
-#include "interface/IImu.hh"
+#include "msensor/interface/IImu.hh"
 
 /**
  * @brief Implements the IMU gRPC service.

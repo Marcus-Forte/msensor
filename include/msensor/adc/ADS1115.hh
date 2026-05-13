@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interface/IAdc.hh"
+#include "msensor/interface/IAdc.hh"
 
 #include <cstdint>
 #include <optional>

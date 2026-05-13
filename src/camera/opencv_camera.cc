@@ -1,5 +1,5 @@
-#include "camera/opencv_camera.hh"
-#include "timing/timing.hh"
+#include "msensor/camera/opencv_camera.hh"
+#include "msensor/timing/timing.hh"
 
 #include <opencv2/videoio.hpp>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "interface/ILidar.hh"
 #include "lidar.grpc.pb.h"
+#include "msensor/interface/ILidar.hh"
 
 /**
  * @brief Implements the LiDAR gRPC service using the callback API.

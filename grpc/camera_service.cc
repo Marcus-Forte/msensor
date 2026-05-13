@@ -1,6 +1,6 @@
 
 #include "camera_service.hh"
-#include "conversions.hh"
+#include "msensor/conversions/conversions.hh"
 
 CameraServiceImpl::CameraServiceImpl(std::shared_ptr<msensor::ICamera> camera)
     : camera_(camera) {}

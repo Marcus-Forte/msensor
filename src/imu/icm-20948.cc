@@ -9,9 +9,9 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include "imu/icm-20948.h"
-#include "imu/icm-20948_defs.h"
-#include "timing/timing.hh"
+#include "msensor/imu/icm-20948.h"
+#include "msensor/imu/icm-20948_defs.h"
+#include "msensor/timing/timing.hh"
 
 namespace msensor {
 

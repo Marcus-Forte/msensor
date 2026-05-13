@@ -1,7 +1,7 @@
-#include "recorder/scan_recorder.hh"
-#include "conversions.hh"
+#include "msensor/recorder/scan_recorder.hh"
+#include "msensor/conversions/conversions.hh"
+#include "msensor/timing/timing.hh"
 #include "recording.pb.h"
-#include "timing/timing.hh"
 #include <mutex>
 
 std::mutex g_mutex;
