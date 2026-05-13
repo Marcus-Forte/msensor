@@ -3,11 +3,13 @@
 
 #include "msensor/conversions/conversions.hh"
 
-std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg) {
+std::shared_ptr<msensor::Scan3DI>
+fromProtobuf(const sensors::PointCloud3 &msg) {
 
   auto scan = std::make_shared<msensor::Scan3DI>();
-  if (msg.x_size() != msg.y_size() || msg.x_size() != msg.z_size() || msg.x_size() != msg.intensity_size()) {
-    return scan; 
+  if (msg.x_size() != msg.y_size() || msg.x_size() != msg.z_size() ||
+      msg.x_size() != msg.intensity_size()) {
+    return scan;
   }
 
   const float *x_data = msg.x().data();
@@ -17,7 +19,7 @@ std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg) 
 
   scan->points->resize(msg.x_size());
 
-  for(int i = 0; i < msg.x_size(); ++i) {
+  for (int i = 0; i < msg.x_size(); ++i) {
     (*scan->points)[i].x = x_data[i];
     (*scan->points)[i].y = y_data[i];
     (*scan->points)[i].z = z_data[i];
@@ -37,7 +39,8 @@ sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
   }
 
   point_cloud.mutable_header()->set_timestamp(scan->header.timestamp);
-  point_cloud.mutable_header()->set_sequence_number(scan->header.sequence_number);
+  point_cloud.mutable_header()->set_sequence_number(
+      scan->header.sequence_number);
 
   auto *x = point_cloud.mutable_x();
   auto *y = point_cloud.mutable_y();
@@ -81,7 +84,8 @@ sensors::IMUData toProtobuf(msensor::IMUData imu_data) {
   grpc_data.set_gy(imu_data.gy);
   grpc_data.set_gz(imu_data.gz);
   grpc_data.mutable_header()->set_timestamp(imu_data.header.timestamp);
-  grpc_data.mutable_header()->set_sequence_number(imu_data.header.sequence_number);
+  grpc_data.mutable_header()->set_sequence_number(
+      imu_data.header.sequence_number);
   return grpc_data;
 }
 
