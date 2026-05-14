@@ -22,9 +22,10 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import header_pb2 as header__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0blidar.proto\x12\x07sensors\"\x91\x01\n\x0bPointCloud3\x12\x11\n\ttimestamp\x18\x01 \x01(\x04\x12\r\n\x01x\x18\x02 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01y\x18\x03 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01z\x18\x04 \x03(\x02\x42\x02\x10\x01\x12\x15\n\tintensity\x18\x05 \x03(\rB\x02\x10\x01\x12\r\n\x01r\x18\x06 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01g\x18\x07 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01\x62\x18\x08 \x03(\x02\x42\x02\x10\x01\"\x14\n\x12LidarStreamRequest\"2\n\x1cSubSampledLidarStreamRequest\x12\x12\n\nvoxel_size\x18\x01 \x01(\x02\x32\xae\x01\n\x0cLidarService\x12\x43\n\x0cgetLidarScan\x12\x1b.sensors.LidarStreamRequest\x1a\x14.sensors.PointCloud30\x01\x12Y\n\x16getSubSampledLidarScan\x12%.sensors.SubSampledLidarStreamRequest\x1a\x14.sensors.PointCloud3(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0blidar.proto\x12\x07sensors\x1a\x0cheader.proto\"\x9f\x01\n\x0bPointCloud3\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\r\n\x01x\x18\x02 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01y\x18\x03 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01z\x18\x04 \x03(\x02\x42\x02\x10\x01\x12\x15\n\tintensity\x18\x05 \x03(\rB\x02\x10\x01\x12\r\n\x01r\x18\x06 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01g\x18\x07 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01\x62\x18\x08 \x03(\x02\x42\x02\x10\x01\"\x14\n\x12LidarStreamRequest\"2\n\x1cSubSampledLidarStreamRequest\x12\x12\n\nvoxel_size\x18\x01 \x01(\x02\x32\xae\x01\n\x0cLidarService\x12\x43\n\x0cgetLidarScan\x12\x1b.sensors.LidarStreamRequest\x1a\x14.sensors.PointCloud30\x01\x12Y\n\x16getSubSampledLidarScan\x12%.sensors.SubSampledLidarStreamRequest\x1a\x14.sensors.PointCloud3(\x01\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -45,12 +46,12 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_POINTCLOUD3'].fields_by_name['g']._serialized_options = b'\020\001'
   _globals['_POINTCLOUD3'].fields_by_name['b']._loaded_options = None
   _globals['_POINTCLOUD3'].fields_by_name['b']._serialized_options = b'\020\001'
-  _globals['_POINTCLOUD3']._serialized_start=25
-  _globals['_POINTCLOUD3']._serialized_end=170
-  _globals['_LIDARSTREAMREQUEST']._serialized_start=172
-  _globals['_LIDARSTREAMREQUEST']._serialized_end=192
-  _globals['_SUBSAMPLEDLIDARSTREAMREQUEST']._serialized_start=194
-  _globals['_SUBSAMPLEDLIDARSTREAMREQUEST']._serialized_end=244
-  _globals['_LIDARSERVICE']._serialized_start=247
-  _globals['_LIDARSERVICE']._serialized_end=421
+  _globals['_POINTCLOUD3']._serialized_start=39
+  _globals['_POINTCLOUD3']._serialized_end=198
+  _globals['_LIDARSTREAMREQUEST']._serialized_start=200
+  _globals['_LIDARSTREAMREQUEST']._serialized_end=220
+  _globals['_SUBSAMPLEDLIDARSTREAMREQUEST']._serialized_start=222
+  _globals['_SUBSAMPLEDLIDARSTREAMREQUEST']._serialized_end=272
+  _globals['_LIDARSERVICE']._serialized_start=275
+  _globals['_LIDARSERVICE']._serialized_end=449
 # @@protoc_insertion_point(module_scope)

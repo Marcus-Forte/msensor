@@ -210,7 +210,7 @@ std::optional<IMUData> ICM20948::getImuData() {
   auto dbl_gyr_data = convert_raw_data(gyr_data, FACTOR_GYRO_500DPS_RADS);
 
   return {IMUData{
-      Header{timing::getNowNs(), sequence_number},
+      Header{timing::getNowNs(), sequence_number++},
       static_cast<float>(dbl_acc_data.x), static_cast<float>(dbl_acc_data.y),
       static_cast<float>(dbl_acc_data.z), static_cast<float>(dbl_gyr_data.x),
       static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z)}};

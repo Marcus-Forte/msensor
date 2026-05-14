@@ -22,19 +22,20 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import header_pb2 as header__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\timu.proto\x12\x07sensors\"w\n\x07IMUData\x12\n\n\x02\x61x\x18\x01 \x01(\x02\x12\n\n\x02\x61y\x18\x02 \x01(\x02\x12\n\n\x02\x61z\x18\x03 \x01(\x02\x12\n\n\x02gx\x18\x04 \x01(\x02\x12\n\n\x02gy\x18\x05 \x01(\x02\x12\n\n\x02gz\x18\x06 \x01(\x02\x12\x16\n\ttimestamp\x18\x07 \x01(\x04H\x00\x88\x01\x01\x42\x0c\n\n_timestamp\"\x12\n\x10ImuStreamRequest2I\n\nImuService\x12;\n\ngetImuData\x12\x19.sensors.ImuStreamRequest\x1a\x10.sensors.IMUData0\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\timu.proto\x12\x07sensors\x1a\x0cheader.proto\"r\n\x07IMUData\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\n\n\x02\x61x\x18\x02 \x01(\x02\x12\n\n\x02\x61y\x18\x03 \x01(\x02\x12\n\n\x02\x61z\x18\x04 \x01(\x02\x12\n\n\x02gx\x18\x05 \x01(\x02\x12\n\n\x02gy\x18\x06 \x01(\x02\x12\n\n\x02gz\x18\x07 \x01(\x02\"\x12\n\x10ImuStreamRequest2I\n\nImuService\x12;\n\ngetImuData\x12\x19.sensors.ImuStreamRequest\x1a\x10.sensors.IMUData0\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'imu_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_IMUDATA']._serialized_start=22
-  _globals['_IMUDATA']._serialized_end=141
-  _globals['_IMUSTREAMREQUEST']._serialized_start=143
-  _globals['_IMUSTREAMREQUEST']._serialized_end=161
-  _globals['_IMUSERVICE']._serialized_start=163
-  _globals['_IMUSERVICE']._serialized_end=236
+  _globals['_IMUDATA']._serialized_start=36
+  _globals['_IMUDATA']._serialized_end=150
+  _globals['_IMUSTREAMREQUEST']._serialized_start=152
+  _globals['_IMUSTREAMREQUEST']._serialized_end=170
+  _globals['_IMUSERVICE']._serialized_start=172
+  _globals['_IMUSERVICE']._serialized_end=245
 # @@protoc_insertion_point(module_scope)

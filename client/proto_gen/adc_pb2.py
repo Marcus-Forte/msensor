@@ -22,19 +22,20 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+import header_pb2 as header__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tadc.proto\x12\x07sensors\"2\n\x0e\x41\x64\x63\x44\x61taRequest\x12\x14\n\x07\x63hannel\x18\x01 \x01(\rH\x00\x88\x01\x01\x42\n\n\x08_channel\"?\n\x07\x41\x64\x63\x44\x61ta\x12\x0e\n\x06sample\x18\x01 \x01(\x02\x12\x16\n\ttimestamp\x18\x02 \x01(\x04H\x00\x88\x01\x01\x42\x0c\n\n_timestamp2E\n\nAdcService\x12\x37\n\ngetAdcData\x12\x17.sensors.AdcDataRequest\x1a\x10.sensors.AdcDatab\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tadc.proto\x12\x07sensors\x1a\x0cheader.proto\"2\n\x0e\x41\x64\x63\x44\x61taRequest\x12\x14\n\x07\x63hannel\x18\x01 \x01(\rH\x00\x88\x01\x01\x42\n\n\x08_channel\":\n\x07\x41\x64\x63\x44\x61ta\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\x0e\n\x06sample\x18\x02 \x01(\x02\x32\x45\n\nAdcService\x12\x37\n\ngetAdcData\x12\x17.sensors.AdcDataRequest\x1a\x10.sensors.AdcDatab\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'adc_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_ADCDATAREQUEST']._serialized_start=22
-  _globals['_ADCDATAREQUEST']._serialized_end=72
-  _globals['_ADCDATA']._serialized_start=74
-  _globals['_ADCDATA']._serialized_end=137
-  _globals['_ADCSERVICE']._serialized_start=139
-  _globals['_ADCSERVICE']._serialized_end=208
+  _globals['_ADCDATAREQUEST']._serialized_start=36
+  _globals['_ADCDATAREQUEST']._serialized_end=86
+  _globals['_ADCDATA']._serialized_start=88
+  _globals['_ADCDATA']._serialized_end=146
+  _globals['_ADCSERVICE']._serialized_start=148
+  _globals['_ADCSERVICE']._serialized_end=217
 # @@protoc_insertion_point(module_scope)

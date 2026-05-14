@@ -27,6 +27,7 @@ fromProtobuf(const sensors::PointCloud3 &msg) {
   }
 
   scan->header.timestamp = msg.header().timestamp();
+  scan->header.sequence_number = msg.header().sequence_number();
 
   return scan;
 }
@@ -66,6 +67,7 @@ sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
 msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
   msensor::IMUData imu_data;
   imu_data.header.timestamp = msg.header().timestamp();
+  imu_data.header.sequence_number = msg.header().sequence_number();
   imu_data.ax = msg.ax();
   imu_data.ay = msg.ay();
   imu_data.az = msg.az();
