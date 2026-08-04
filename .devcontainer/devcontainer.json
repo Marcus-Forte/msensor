@@ -6,19 +6,16 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-vscode.cpptools-extension-pack",
+				"ms-vscode.cmake-tools",
+                "ms-vscode.cpp-devtools",
 				"llvm-vs-code-extensions.vscode-clangd",
-				"cschlosser.doxdocgen",
-				"jebbs.plantuml",
 				"ms-python.python",
 				"DrBlury.protobuf-vsc"
 			],
-			"settings": {
-				"clangd.arguments": ["-header-insertion=never"],
-				"cmake.configureArgs": ["-DCMAKE_INSTALL_PREFIX=${containerWorkspaceFolder}/build/install"],
-				"cmake.additionalKits": ["/opt/toolchains/cmake-kits.json"],
-				"C_Cpp.intelliSenseEngine": "disabled"
-			}
+			 "settings": {
+                "clangd.arguments": ["-header-insertion=never"],
+                "cmake.useCMakePresets": "always"
+            }
 		}
 	},
 

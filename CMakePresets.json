@@ -1,15 +1,28 @@
 {
-    "version": 8,
-    "configurePresets": [
-        {
-            "name": "default",
-            "displayName": "default",
-            "toolchainFile": "/opt/toolchains/native.cmake",
-            "binaryDir": "${workspaceFolder}/build/${presetName}",
-            "generator": "Ninja",
-            "installDir": "${workspaceFolder}/build/${presetName}/install",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
-            }
-        }]
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "gcc",
+      "displayName": "GCC",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "/opt/toolchain/gcc.cmake",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+      
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-gcc",
+      "configurePreset": "gcc",
+      "verbose": true
+    }
+  ]
 }

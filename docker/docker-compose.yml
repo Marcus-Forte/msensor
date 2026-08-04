@@ -10,7 +10,6 @@ services:
             apt-get install -y --no-install-recommends ptpd && \
             rm -rf /var/lib/apt/lists/*
         CMD ["ptpd", "-M", "-i", "eth0", "-C"]
-    container_name: livox_ptp_master
     network_mode: "host"
     cap_add:
       - NET_ADMIN
