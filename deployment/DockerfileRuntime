@@ -27,7 +27,6 @@ RUN printf 'Types: deb\nURIs: http://deb.debian.org/debian\nSuites: sid\nCompone
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app /usr/local/
-COPY --from=build /app/etc/ /cfg/
 COPY --from=build /usr/local/share /usr/local/share/
 COPY --from=build /usr/local/lib/aarch64-linux-gnu/ /usr/local/lib/aarch64-linux-gnu/
 COPY --from=build --chmod=0755 /src/deployment/entrypoint.sh /usr/local/bin/entrypoint.sh

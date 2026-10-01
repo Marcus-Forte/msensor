@@ -148,7 +148,7 @@ Config Config::fromFile(const std::filesystem::path &config_path) {
 }
 
 std::filesystem::path Config::defaultConfigPath() {
-  return "/cfg/publisher_config.json";
+  return "/usr/local/etc/publisher_config.json";
 }
 
 } // namespace msensor

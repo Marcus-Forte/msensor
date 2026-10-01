@@ -33,7 +33,17 @@ int main(int argc, char **argv) {
   const std::filesystem::path config_path =
       argc == 2 ? std::filesystem::path(argv[1])
                 : msensor::Config::defaultConfigPath();
-  const msensor::Config config = msensor::Config::fromFile(config_path);
+  std::cout << "Loading config from: " << config_path << std::endl;
+  msensor::Config config = msensor::Config::fromFile(config_path);
+  if (!config.mid360.config.empty()) {
+    const std::filesystem::path mid360_config_path(config.mid360.config);
+    if (mid360_config_path.is_relative()) {
+      config.mid360.config =
+          (config_path.parent_path() / mid360_config_path)
+              .lexically_normal()
+              .string();
+    }
+  }
 
   std::shared_ptr<msensor::ILidar> lidar = nullptr;
   std::shared_ptr<msensor::IImu> imu = nullptr;
