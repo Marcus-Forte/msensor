@@ -1,49 +1,50 @@
 #include "msensor/lidar/sim_lidar.hh"
 #include "msensor/timing/timing.hh"
 #include <iostream>
-#include <random>
-#include <thread>
 
 namespace msensor {
 
-SimLidar::SimLidar(bool steady) : steady_(steady) {
+namespace {
+constexpr auto kPeriod = std::chrono::milliseconds(25); // 40 Hz.
+constexpr int kNumPoints = 2000;
+} // namespace
+
+SimLidar::SimLidar(bool steady)
+    : steady_(steady), gen_(std::random_device{}()),
+      producer_(hub_, [this] { return makeScan(); }, kPeriod) {
   std::cout << "SimLidar initialized. steady=" << std::boolalpha << steady_
             << std::endl;
 }
 
 void SimLidar::init() { std::cout << "init" << std::endl; }
 
-void SimLidar::startSampling() { std::cout << "startSampling" << std::endl; }
-void SimLidar::stopSampling() { std::cout << "stopSampling" << std::endl; }
+void SimLidar::startSampling() {
+  std::cout << "startSampling" << std::endl;
+  producer_.start();
+}
 
-std::shared_ptr<Scan3DI> SimLidar::getScan() {
+void SimLidar::stopSampling() {
+  std::cout << "stopSampling" << std::endl;
+  producer_.stop();
+}
 
-  const int nr_points = 2000;
-  static uint32_t sequence_number = 0;
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-
+std::shared_ptr<const Scan3DI> SimLidar::makeScan() {
   auto scan = std::make_shared<Scan3DI>();
-  scan->points->reserve(nr_points);
+  scan->points->reserve(kNumPoints);
 
+  std::uniform_real_distribution<> dis(-10.0, 10.0);
   if (!steady_) {
-    std::uniform_real_distribution<> dis(-10.0, 10.0);
-    for (int i = 0; i < nr_points; ++i) {
-      scan->points->emplace_back(dis(gen), dis(gen), dis(gen), i % nr_points);
+    for (int i = 0; i < kNumPoints; ++i) {
+      scan->points->emplace_back(dis(gen_), dis(gen_), dis(gen_), i);
     }
   } else {
-    std::mt19937 gen(67); // fixed seed for deterministic output
-    std::uniform_real_distribution<> dis(-10.0, 10.0);
-    for (int i = 0; i < nr_points; ++i) {
-      scan->points->emplace_back(dis(gen), dis(gen), dis(gen), i % nr_points);
+    std::mt19937 fixed(67); // fixed seed for deterministic output
+    for (int i = 0; i < kNumPoints; ++i) {
+      scan->points->emplace_back(dis(fixed), dis(fixed), dis(fixed), i);
     }
   }
 
-  scan->header = {Header{timing::getNowNs(), sequence_number++}};
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(25)); // 40 Hz.
-
+  scan->header = Header{timing::getNowNs(), sequence_number_++};
   return scan;
 }
 } // namespace msensor

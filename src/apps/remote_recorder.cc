@@ -59,12 +59,15 @@ int main(int argc, char **argv) {
   SensorsRemoteClient client(remote_address);
   client.init();
   std::cout << "Connecting to " << remote_address << "..." << std::endl;
+  auto lidar_sub =
+      client.scans().subscribe(msensor::SubscribePolicy::bounded(50));
+  auto imu_sub = client.imu().subscribe(msensor::SubscribePolicy::bounded(500));
   client.start();
 
   while (!g_should_stop.load()) {
     bool recorded_sample = false;
 
-    while (const auto scan = client.getScan()) {
+    while (const auto scan = lidar_sub->tryPop()) {
       recorder.record(scan);
       ++lidar_entries_saved;
       recorded_sample = true;
@@ -75,7 +78,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    while (const auto imu = client.getImuData()) {
+    while (const auto imu = imu_sub->tryPop()) {
       recorder.record(*imu);
       ++imu_entries_saved;
       recorded_sample = true;

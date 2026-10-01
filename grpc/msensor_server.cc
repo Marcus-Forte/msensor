@@ -24,4 +24,8 @@ void SensorsServer::start() {
   std::cout << "Listening..." << std::endl;
 }
 
-void SensorsServer::stop() { server_->Shutdown(); }
+void SensorsServer::stop() {
+  if (server_) {
+    server_->Shutdown();
+  }
+}

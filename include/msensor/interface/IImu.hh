@@ -1,8 +1,8 @@
 #pragma once
 
-#include <optional>
 #include <stdint.h>
 
+#include "msensor/hub/SensorHub.hh"
 #include "msensor/interface/Header.hh"
 
 namespace msensor {
@@ -25,13 +25,23 @@ struct IMUData {
  */
 class IImu {
 public:
+  virtual ~IImu() = default;
+
   /**
-   * @brief Retrieve the latest IMU sample if available.
-   *
-   * @return std::optional<IMUData> Most recent IMU reading, or empty if none
-   *         is ready.
+   * @brief Start publishing IMU samples.
    */
-  virtual std::optional<IMUData> getImuData() = 0;
+  virtual void startSampling() = 0;
+  /**
+   * @brief Stop publishing IMU samples.
+   */
+  virtual void stopSampling() = 0;
+
+  /**
+   * @brief Hub publishing IMU samples.
+   *
+   * Subscribe to receive every sample independently of other consumers.
+   */
+  virtual SensorHub<IMUData> &imu() = 0;
 };
 
 } // namespace msensor

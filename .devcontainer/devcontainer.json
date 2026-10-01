@@ -22,7 +22,9 @@
 	"appPort": ["50051:50051"],
 
 	"mounts": [
-		"source=msensor-app-cache,target=${containerWorkspaceFolder}/build,type=volume"
+		"source=msensor-build-${devcontainerId},target=${containerWorkspaceFolder}/build,type=volume",
+		"source=msensor-venv-${devcontainerId},target=${containerWorkspaceFolder}/client/.venv,type=volume",
+		"source=opencode-sessions,target=/root/.local/share/opencode,type=volume"
 	],
 	"runArgs": [
 		"--privileged",

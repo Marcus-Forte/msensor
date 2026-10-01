@@ -73,6 +73,7 @@ int main(int argc, char **argv) {
       auto rp = std::make_shared<msensor::RPLidar>(config.rplidar.device);
       rp->init();
       rp->setMotorRPM(360);
+      rp->startSampling();
       lidar = rp;
     } else {
       std::cerr << "Lidar device: " << config.rplidar.device
@@ -98,6 +99,7 @@ int main(int argc, char **argv) {
                                                         ICM20948_ADDR0);
     icm20948->init();
     icm20948->calibrate();
+    icm20948->startSampling();
     imu = icm20948;
   }
 

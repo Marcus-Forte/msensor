@@ -32,7 +32,8 @@ fromProtobuf(const sensors::PointCloud3 &msg) {
   return scan;
 }
 
-sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &scan) {
+sensors::PointCloud3
+toProtobuf(const std::shared_ptr<const msensor::Scan3DI> &scan) {
   sensors::PointCloud3 point_cloud;
 
   if (!scan || !scan->points) {

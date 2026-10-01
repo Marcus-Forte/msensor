@@ -15,7 +15,8 @@ std::shared_ptr<msensor::Scan3DI> fromProtobuf(const sensors::PointCloud3 &msg);
 /**
  * @brief Convert an msensor point cloud to gRPC point cloud message.
  */
-sensors::PointCloud3 toProtobuf(const std::shared_ptr<msensor::Scan3DI> &msg);
+sensors::PointCloud3
+toProtobuf(const std::shared_ptr<const msensor::Scan3DI> &msg);
 
 /**
  * @brief Convert a gRPC IMU message into an msensor IMU sample.

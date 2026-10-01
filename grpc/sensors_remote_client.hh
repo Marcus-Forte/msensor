@@ -1,8 +1,8 @@
 #pragma once
 
-#include <boost/lockfree/spsc_queue.hpp>
 #include <grpcpp/channel.h>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include "imu.grpc.pb.h"
@@ -28,10 +28,10 @@ public:
   void startSampling() override;
   void stopSampling() override;
 
-  /// Pop the next LiDAR scan received over gRPC.
-  std::shared_ptr<msensor::Scan3DI> getScan() override;
-  /// Pop the next IMU sample received over gRPC.
-  std::optional<msensor::IMUData> getImuData() override;
+  /// Hub publishing LiDAR scans received over gRPC.
+  msensor::SensorHub<msensor::Scan3DI> &scans() override { return scan_hub_; }
+  /// Hub publishing IMU samples received over gRPC.
+  msensor::SensorHub<msensor::IMUData> &imu() override { return imu_hub_; }
 
 private:
   std::string remote_ip_;
@@ -39,10 +39,15 @@ private:
   std::unique_ptr<sensors::LidarService::Stub> lidar_stub_;
   std::unique_ptr<sensors::ImuService::Stub> imu_stub_;
 
+  msensor::SensorHub<msensor::Scan3DI> scan_hub_;
+  msensor::SensorHub<msensor::IMUData> imu_hub_;
+
+  // Active stream contexts, so stop() can cancel blocked reads.
+  std::mutex ctx_m_;
+  grpc::ClientContext *lidar_ctx_ = nullptr;
+  grpc::ClientContext *imu_ctx_ = nullptr;
+
+  // Last: joined before the members above are destroyed.
   std::jthread read_thread_;
   std::jthread imu_reader_thread_;
-  std::unique_ptr<grpc::ClientContext> context_;
-
-  boost::lockfree::spsc_queue<std::shared_ptr<msensor::Scan3DI>> scan_queue_;
-  boost::lockfree::spsc_queue<msensor::IMUData> imu_queue_;
 };

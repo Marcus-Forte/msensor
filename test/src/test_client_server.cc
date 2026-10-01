@@ -1,70 +1,104 @@
+#include "msensor/imu/sim_imu.hh"
+#include "msensor/lidar/sim_lidar.hh"
 #include "msensor_server.hh"
 #include "sensors_remote_client.hh"
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
+
+using namespace std::chrono_literals;
 
 class TestClientServer : public ::testing::Test {
 public:
   void SetUp() override {
-    server = std::make_shared<SensorsServer>();
+    lidar = std::make_shared<msensor::SimLidar>(true);
+    imu = std::make_shared<msensor::SimImu>();
+    server = std::make_shared<SensorsServer>(nullptr, nullptr, imu, lidar);
     client = std::make_shared<SensorsRemoteClient>("localhost:50051");
   }
 
+  void TearDown() override {
+    client->stop();
+    server->stop();
+    lidar->stopSampling();
+    imu->stopSampling();
+  }
+
 protected:
+  std::shared_ptr<msensor::SimLidar> lidar;
+  std::shared_ptr<msensor::SimImu> imu;
   std::shared_ptr<SensorsServer> server;
   std::shared_ptr<SensorsRemoteClient> client;
 };
 
-// TODO fix infinite loop
-TEST_F(TestClientServer, DISABLED_TestServer) {
+TEST_F(TestClientServer, StreamsScansAndImuToClient) {
+  auto scan_sub = client->scans().subscribe();
+  auto imu_sub = client->imu().subscribe();
 
   server->start();
-
-  // Wait for the data to reach the client.
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+  lidar->startSampling();
+  imu->startSampling();
   client->start();
 
-  // Wait for client to open the streams
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  const auto scan = scan_sub->waitPop({}, 5s);
+  const auto imu_sample = imu_sub->waitPop({}, 5s);
+  ASSERT_NE(scan, nullptr);
+  ASSERT_NE(imu_sample, nullptr);
+  EXPECT_EQ(scan->points->size(), 2000u);
+  EXPECT_GT(scan->header.timestamp, 0u);
+}
 
-  auto scan_read = client->getScan();
-  auto imu_read = client->getImuData();
-  // No data yet
-  EXPECT_EQ(scan_read, nullptr);
-  EXPECT_EQ(imu_read, std::nullopt);
+TEST_F(TestClientServer, TwoClientsBothReceiveScans) {
+  SensorsRemoteClient second("localhost:50051");
+  auto sub_a = client->scans().subscribe();
+  auto sub_b = second.scans().subscribe();
 
-  // Push data into the queues
-  auto scan = std::make_shared<msensor::Scan3DI>();
-  scan->points->emplace_back(1, 2, 3);
-  scan->header.timestamp = 10;
+  server->start();
+  lidar->startSampling();
+  client->start();
+  second.start();
 
-  auto imu = msensor::IMUData{msensor::Header{7, 0}, 1, 2, 3, 4, 5, 6};
+  EXPECT_NE(sub_a->waitPop({}, 5s), nullptr);
+  EXPECT_NE(sub_b->waitPop({}, 5s), nullptr);
+  second.stop();
+}
 
-  // Wait for data to reach the client
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
+  auto empty_server = std::make_shared<SensorsServer>();
+  empty_server->start();
+  SensorsRemoteClient c("localhost:50051");
+  c.start(); // streams end with UNAVAILABLE, client retries quietly
+  std::this_thread::sleep_for(200ms);
+  c.stop();
+  empty_server->stop();
+}
 
-  scan_read = client->getScan();
-  imu_read = client->getImuData();
-  ASSERT_NE(scan_read, nullptr);
-  ASSERT_NE(imu_read, std::nullopt);
+TEST_F(TestClientServer, SubSampledStreamFiltersAndSurvivesCancel) {
+  server->start();
+  lidar->startSampling();
 
-  const auto &scan_points = *scan_read->points;
+  auto channel = grpc::CreateChannel("localhost:50051",
+                                     grpc::InsecureChannelCredentials());
+  auto stub = sensors::LidarService::NewStub(channel);
 
-  EXPECT_EQ(scan_read->header.timestamp, 10);
-  ASSERT_GE(scan_read->points->size(), 1);
-  EXPECT_EQ(scan_points[0].x, 1);
-  EXPECT_EQ(scan_points[0].y, 2);
-  EXPECT_EQ(scan_points[0].z, 3);
+  for (int round = 0; round < 3; ++round) {
+    grpc::ClientContext context;
+    auto stream = stub->getSubSampledLidarScan(&context);
 
-  EXPECT_EQ(imu_read->ax, 1);
-  EXPECT_EQ(imu_read->ay, 2);
-  EXPECT_EQ(imu_read->az, 3);
-  EXPECT_EQ(imu_read->gx, 4);
-  EXPECT_EQ(imu_read->gy, 5);
-  EXPECT_EQ(imu_read->gz, 6);
+    sensors::SubSampledLidarStreamRequest request;
+    request.set_voxel_size(5.0f);
+    ASSERT_TRUE(stream->Write(request));
 
-  std::cout << "Test complete, stopping server and client." << std::endl;
+    // Invalid sizes are ignored, the stream keeps working.
+    request.set_voxel_size(-1.0f);
+    ASSERT_TRUE(stream->Write(request));
 
-  client->stop();
-  server->stop();
+    sensors::PointCloud3 cloud;
+    ASSERT_TRUE(stream->Read(&cloud));
+    // 2000 random points in a 20 m cube with 5 m voxels: at most 4^3.
+    EXPECT_GT(cloud.x_size(), 0);
+    EXPECT_LE(cloud.x_size(), 64);
+
+    // Drop the stream mid-flight; the server must clean up.
+    context.TryCancel();
+  }
 }

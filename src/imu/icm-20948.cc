@@ -15,6 +15,10 @@ extern "C" {
 
 namespace msensor {
 
+namespace {
+constexpr auto kSamplePeriod = std::chrono::milliseconds(10); // 100 Hz.
+}
+
 inline uint8_t ICM20948::write_(uint8_t reg_address, uint8_t data) const {
   return i2c_smbus_write_byte_data(i2c_device_fd_, reg_address, data);
 }
@@ -51,7 +55,8 @@ void ICM20948::bank_select(int bank) const {
 }
 
 ICM20948::ICM20948(int i2c_device, int i2c_icm_address)
-    : i2c_device_(i2c_device), i2c_icm_address_(i2c_icm_address) {
+    : i2c_device_(i2c_device), i2c_icm_address_(i2c_icm_address),
+      producer_(hub_, [this] { return readSample(); }, kSamplePeriod) {
   const std::string i2c_device_file = "/dev/i2c-" + std::to_string(i2c_device);
   i2c_device_fd_ = open(i2c_device_file.c_str(), O_RDWR);
 
@@ -202,18 +207,17 @@ bool ICM20948::calibrate() const {
   return true;
 }
 
-std::optional<IMUData> ICM20948::getImuData() {
-  static uint32_t sequence_number = 0;
+std::shared_ptr<const IMUData> ICM20948::readSample() {
   auto acc_data = get_acc_data();
   auto gyr_data = get_gyro_data();
   auto dbl_acc_data = convert_raw_data(acc_data, FACTOR_ACC_2G);
   auto dbl_gyr_data = convert_raw_data(gyr_data, FACTOR_GYRO_500DPS_RADS);
 
-  return {IMUData{
-      Header{timing::getNowNs(), sequence_number++},
+  return std::make_shared<const IMUData>(IMUData{
+      Header{timing::getNowNs(), sequence_number_++},
       static_cast<float>(dbl_acc_data.x), static_cast<float>(dbl_acc_data.y),
       static_cast<float>(dbl_acc_data.z), static_cast<float>(dbl_gyr_data.x),
-      static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z)}};
+      static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z)});
 }
 
 ICM20948::xyz_data_ ICM20948::get_acc_data() const {

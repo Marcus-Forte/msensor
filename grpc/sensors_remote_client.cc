@@ -1,18 +1,16 @@
+#include <condition_variable>
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
+#include <mutex>
 
 #include "msensor/conversions/conversions.hh"
 #include "sensors_remote_client.hh"
 
-constexpr int g_idleTimeMs = 5;
-constexpr size_t g_maxLidarSamples = 100;
-constexpr size_t g_maxImuSamples = 200;
 constexpr int g_connectionRecoverDelayMs = 1000;
 
 SensorsRemoteClient::SensorsRemoteClient(const std::string &remote_ip)
-    : remote_ip_(remote_ip), scan_queue_(g_maxLidarSamples),
-      imu_queue_(g_maxImuSamples) {
+    : remote_ip_(remote_ip) {
 
   channel_ = grpc::CreateChannel(remote_ip, grpc::InsecureChannelCredentials());
   lidar_stub_ = sensors::LidarService::NewStub(channel_);
@@ -25,82 +23,98 @@ void SensorsRemoteClient::stopSampling() {}
 
 SensorsRemoteClient::~SensorsRemoteClient() { stop(); }
 
-std::shared_ptr<msensor::Scan3DI> SensorsRemoteClient::getScan() {
+namespace {
 
-  if (!scan_queue_.empty()) {
-    auto pointcloud = scan_queue_.front();
-    scan_queue_.pop();
-    return pointcloud;
-  }
-
-  return nullptr;
+void interruptibleSleep(std::stop_token st, std::chrono::milliseconds d) {
+  std::mutex m;
+  std::condition_variable_any cv;
+  std::unique_lock lock(m);
+  cv.wait_for(lock, st, d, [] { return false; });
 }
 
-std::optional<msensor::IMUData> SensorsRemoteClient::getImuData() {
+/// Opens a stream, forwards every message to `on_msg`, and reopens the stream
+/// after a delay when it ends. `active` always points at the live context (or
+/// is null), under `m`, so stop() can cancel a blocked Read().
+template <class Msg, class Open, class OnMsg>
+void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
+              const char *name, Open open, OnMsg on_msg) {
+  while (!st.stop_requested()) {
+    grpc::ClientContext context;
+    {
+      std::lock_guard lock(m);
+      if (st.stop_requested()) {
+        return;
+      }
+      active = &context;
+    }
 
-  if (!imu_queue_.empty()) {
-    const auto imu_data = imu_queue_.front();
-    imu_queue_.pop();
-    return imu_data;
+    {
+      auto reader = open(&context);
+      Msg msg;
+      while (reader->Read(&msg)) {
+        on_msg(msg);
+      }
+    }
+
+    {
+      std::lock_guard lock(m);
+      active = nullptr;
+    }
+
+    if (st.stop_requested()) {
+      return;
+    }
+    std::cout << "Unable to read remote " << name << "." << std::endl;
+    interruptibleSleep(st,
+                       std::chrono::milliseconds(g_connectionRecoverDelayMs));
   }
-
-  return std::nullopt;
 }
+
+} // namespace
 
 void SensorsRemoteClient::start() {
-
-  read_thread_ = std::jthread([&](std::stop_token stop_token) {
-    auto service_context_ = std::make_unique<grpc::ClientContext>();
-    sensors::LidarStreamRequest request;
-
-    auto reader = lidar_stub_->getLidarScan(service_context_.get(), request);
-
-    sensors::PointCloud3 msg;
-
-    while (!stop_token.stop_requested()) {
-      if (!reader->Read(&msg)) {
-        std::cout << "Unable to read remote lidar." << std::endl;
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(g_connectionRecoverDelayMs));
-        service_context_ = std::make_unique<grpc::ClientContext>();
-        reader = lidar_stub_->getLidarScan(service_context_.get(),
-                                           request); // retry
-      } else {
-        scan_queue_.push(fromProtobuf(msg));
-      }
-    }
+  read_thread_ = std::jthread([this](std::stop_token st) {
+    const sensors::LidarStreamRequest request;
+    readLoop<sensors::PointCloud3>(
+        st, ctx_m_, lidar_ctx_, "lidar",
+        [&](grpc::ClientContext *ctx) {
+          return lidar_stub_->getLidarScan(ctx, request);
+        },
+        [&](const sensors::PointCloud3 &msg) {
+          scan_hub_.publish(fromProtobuf(msg));
+        });
   });
 
-  imu_reader_thread_ = std::jthread([&](std::stop_token stop_token) {
-    auto service_context_ = std::make_unique<grpc::ClientContext>();
-    sensors::ImuStreamRequest request;
-
-    auto imu_reader = imu_stub_->getImuData(service_context_.get(), request);
-    sensors::IMUData msg;
-
-    while (!stop_token.stop_requested()) {
-
-      if (!imu_reader->Read(&msg)) {
-        std::cout << "Unable to read remote imu." << std::endl;
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(g_connectionRecoverDelayMs));
-        service_context_ = std::make_unique<grpc::ClientContext>();
-        imu_reader = imu_stub_->getImuData(service_context_.get(), request);
-      } else {
-        imu_queue_.push(fromProtobuf(msg));
-      }
-    }
+  imu_reader_thread_ = std::jthread([this](std::stop_token st) {
+    const sensors::ImuStreamRequest request;
+    readLoop<sensors::IMUData>(
+        st, ctx_m_, imu_ctx_, "imu",
+        [&](grpc::ClientContext *ctx) {
+          return imu_stub_->getImuData(ctx, request);
+        },
+        [&](const sensors::IMUData &msg) {
+          imu_hub_.publish(fromProtobuf(msg));
+        });
   });
 }
 
 void SensorsRemoteClient::stop() {
+  read_thread_.request_stop();
+  imu_reader_thread_.request_stop();
+  {
+    // Unblock readers waiting on a silent stream.
+    std::lock_guard lock(ctx_m_);
+    if (lidar_ctx_) {
+      lidar_ctx_->TryCancel();
+    }
+    if (imu_ctx_) {
+      imu_ctx_->TryCancel();
+    }
+  }
   if (read_thread_.joinable()) {
-    read_thread_.request_stop();
     read_thread_.join();
   }
-
   if (imu_reader_thread_.joinable()) {
-    imu_reader_thread_.request_stop();
     imu_reader_thread_.join();
   }
 }

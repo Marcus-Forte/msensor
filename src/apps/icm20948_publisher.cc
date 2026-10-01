@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
       std::make_shared<msensor::ICM20948>(i2c_device, ICM20948_ADDR0);
   icm20948->init();
   icm20948->calibrate();
+  icm20948->startSampling();
 
   SensorsServer server(nullptr, nullptr, icm20948, nullptr);
   server.start();

@@ -2,12 +2,14 @@
 
 #include "lidar.grpc.pb.h"
 #include "msensor/interface/ILidar.hh"
+#include "task_runner.hh"
 
 /**
  * @brief Implements the LiDAR gRPC service using the callback API.
  *
- * CallbackService provides reactor-based async handling, allowing
- * independent reads and writes on bidirectional streams without threads.
+ * Each stream subscribes to the lidar's scan hub, so any number of clients can
+ * stream at once and a slow client only drops its own scans. Streams are
+ * event-driven: no thread is held while waiting for data.
  */
 class LidarServiceImpl : public sensors::LidarService::CallbackService {
 public:
@@ -23,4 +25,5 @@ public:
 
 private:
   std::shared_ptr<msensor::ILidar> lidar_;
+  TaskRunner runner_;
 };

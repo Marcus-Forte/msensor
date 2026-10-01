@@ -17,14 +17,14 @@ int main(int argc, char **argv) {
   auto sim_camera = std::make_shared<msensor::SimCamera>();
   auto sim_adc = std::make_shared<msensor::SimAdc>();
 
+  sim_lidar->startSampling();
+  sim_imu->startSampling();
+
   SensorsServer server(sim_adc, sim_camera, sim_imu, sim_lidar);
   server.start();
 
-  std::cout << "Publishing scan and Imu data";
+  std::cout << "Publishing scan and Imu data" << std::endl;
   while (true) {
-    const auto scan = sim_lidar->getScan();
-    const auto imudata = sim_imu->getImuData();
-
-    std::this_thread::sleep_for(std::chrono::microseconds(100));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }

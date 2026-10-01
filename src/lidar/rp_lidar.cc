@@ -10,8 +10,8 @@ namespace msensor {
 constexpr uint32_t g_baudRate = 115200;
 
 std::shared_ptr<Scan3DI>
-toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count) {
-  static uint32_t sequence_number = 0;
+toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count,
+         uint32_t sequence_number) {
   std::shared_ptr<Scan3DI> scan = std::make_shared<Scan3DI>();
   scan->points = std::make_shared<PointCloud3I>();
   scan->points->reserve(count);
@@ -26,12 +26,13 @@ toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count) {
     float y = sin(angle_in_pi) * dist_m;
     scan->points->emplace_back(x, y, 0, 0);
   }
-  scan->header = {Header{timing::getNowNs(), sequence_number++}};
+  scan->header = {Header{timing::getNowNs(), sequence_number}};
 
   return scan;
 }
 
-RPLidar::RPLidar(const std::string &serial_port) {
+RPLidar::RPLidar(const std::string &serial_port)
+    : producer_(hub_, [this] { return grabScan(); }) {
 
   drv_ = *sl::createLidarDriver();
 
@@ -76,7 +77,7 @@ void RPLidar::init() {
   drv_->startScan(0, 1);
 }
 
-std::shared_ptr<Scan3DI> RPLidar::getScan() {
+std::shared_ptr<const Scan3DI> RPLidar::grabScan() {
 
   sl_lidar_response_measurement_node_hq_t nodes[8192];
   size_t count = sizeof(nodes) / sizeof(nodes[0]);
@@ -84,7 +85,7 @@ std::shared_ptr<Scan3DI> RPLidar::getScan() {
   auto result = drv_->grabScanDataHq(nodes, count, 5);
   if (SL_IS_OK(result)) {
     drv_->ascendScanData(nodes, count); // AKA Reorder
-    return toScan3D(nodes, count);
+    return toScan3D(nodes, count, sequence_number_++);
   } else {
     return nullptr;
   }

@@ -3,6 +3,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "msensor/hub/SensorHub.hh"
 #include "msensor/interface/Header.hh"
 
 #include <stdint.h>
@@ -58,12 +59,13 @@ public:
   virtual void stopSampling() = 0;
 
   /**
-   * @brief Return lidar scan.
+   * @brief Hub publishing lidar scans.
    *
-   * @return Scan3DI
+   * Subscribe to receive every scan independently of other consumers.
+   *
    * @note The associated timestamp is assumed to be the time
    * point[0] was measured. Unit: ns (1/1000000000 sec).
    */
-  virtual std::shared_ptr<Scan3DI> getScan() = 0;
+  virtual SensorHub<Scan3DI> &scans() = 0;
 };
 } // namespace msensor

@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
 
   lidar->init();
   lidar->setMotorRPM(360);
+  lidar->startSampling();
 
   SensorsServer server(nullptr, nullptr, nullptr, lidar);
   server.start();

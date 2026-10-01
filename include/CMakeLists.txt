@@ -6,13 +6,16 @@ target_include_directories(IFile INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(IConfig INTERFACE)
 target_include_directories(IConfig INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_library(ISensorHub INTERFACE)
+target_include_directories(ISensorHub INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_library(IImu INTERFACE)
 target_include_directories(IImu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(IImu INTERFACE timing)
+target_link_libraries(IImu INTERFACE timing ISensorHub)
 
 add_library(ILidar INTERFACE)
 target_include_directories(ILidar INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ILidar INTERFACE timing ${PCL_LIBRARIES})
+target_link_libraries(ILidar INTERFACE timing ISensorHub ${PCL_LIBRARIES})
 
 add_library(IAdc INTERFACE)
 target_include_directories(IAdc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -25,6 +28,7 @@ target_include_directories(ICamera INTERFACE ${OpenCV_INCLUDE_DIRS})
 # Namespaced aliases for submodule consumers
 add_library(msensor::IFile ALIAS IFile)
 add_library(msensor::IConfig ALIAS IConfig)
+add_library(msensor::ISensorHub ALIAS ISensorHub)
 add_library(msensor::IImu ALIAS IImu)
 add_library(msensor::ILidar ALIAS ILidar)
 add_library(msensor::IAdc ALIAS IAdc)

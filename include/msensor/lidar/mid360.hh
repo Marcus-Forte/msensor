@@ -5,7 +5,8 @@
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
 
-#include <boost/lockfree/spsc_queue.hpp>
+#include <atomic>
+#include <memory>
 
 namespace msensor {
 
@@ -30,21 +31,21 @@ public:
    * LiDAR is one of the configuration elements. Make sure your machine lies
    * within a reacheable subnet of the LiDAR.
    * @param accumulate_scan_count number of samples to accumulate when returning
-   * data from getScan(). Typically the number of points per `getScan` is 96 *
+   * data per published scan. Typically the number of points per scan is 96 *
    * `accumulate_scan_count`.
    */
   Mid360(std::string config, size_t accumulate_scan_count);
   /// Initialize the Livox driver and connect to the device.
   void init() override;
 
-  /// Retrieve the next accumulated point cloud.
+  /// Hub publishing each accumulated point cloud.
   /// \note Time is in nanoseconds and corresponds to the first point of the
-  /// first UDP packet accumulated into the returned scan.
-  std::shared_ptr<Scan3DI> getScan() override;
+  /// first UDP packet accumulated into the scan.
+  SensorHub<Scan3DI> &scans() override { return scan_hub_; }
 
-  /// Retrieve the latest IMU sample from the embedded sensor.
+  /// Hub publishing IMU samples from the embedded sensor.
   /// \note Time is in nanoseconds.
-  std::optional<IMUData> getImuData() override;
+  SensorHub<IMUData> &imu() override { return imu_hub_; }
 
   /// Start sampling LiDAR and IMU data.
   void startSampling() override;
@@ -62,14 +63,17 @@ private:
   const std::string config_;
   std::shared_ptr<Scan3DI> accumulated_pointcloud_data_;
 
-  boost::lockfree::spsc_queue<std::shared_ptr<Scan3DI>> scan_queue_;
-  boost::lockfree::spsc_queue<IMUData> imu_queue_;
+  SensorHub<Scan3DI> scan_hub_;
+  SensorHub<IMUData> imu_hub_;
+
+  std::atomic<uint32_t> scan_sequence_{0};
+  std::atomic<uint32_t> imu_sequence_{0};
 
   const size_t accumulate_scan_count_;
 
   size_t scan_count_;
 
-  uint32_t connection_handle_;
+  uint32_t connection_handle_{0};
 };
 
 } // namespace msensor

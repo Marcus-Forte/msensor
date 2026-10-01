@@ -1,5 +1,6 @@
 #pragma once
 
+#include "msensor/hub/PollingProducer.hh"
 #include "msensor/interface/IImu.hh"
 #include <stdint.h>
 
@@ -33,9 +34,16 @@ public:
   // everytime. Calibration values are written to the IMU.
   bool calibrate() const;
 
-  std::optional<IMUData> getImuData() override;
+  /// Start publishing samples (at a fixed 100 Hz).
+  void startSampling() override { producer_.start(); }
+  /// Stop publishing samples.
+  void stopSampling() override { producer_.stop(); }
+  SensorHub<IMUData> &imu() override { return hub_; }
 
 private:
+  /// Read one sample from the device.
+  std::shared_ptr<const IMUData> readSample();
+
   xyz_data_ get_acc_data() const;
   xyz_data_ get_gyro_data() const;
 
@@ -102,7 +110,10 @@ private:
   const int i2c_device_;
   const int i2c_icm_address_;
   int i2c_device_fd_;
-  
+
+  uint32_t sequence_number_ = 0;
+  SensorHub<IMUData> hub_;
+  PollingProducer<IMUData> producer_;
 };
 
 }
