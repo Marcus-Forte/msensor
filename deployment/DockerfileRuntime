@@ -5,13 +5,13 @@ FROM mdnf1992/cpp-dev AS build
 
 COPY . /src
 
-# Toolchain file is present in the devcontainer to build native binaries.
-# `make install` will install all binaries and library dependencies to `/app`
-RUN mkdir -p /src/build && cd /src/build && \
-    cmake .. -DCMAKE_TOOLCHAIN_FILE=/opt/toolchain/gcc.cmake \
+WORKDIR /src
+
+# Install the Release build and its runtime dependencies into `/app`.
+RUN cmake --preset gcc -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/app \
     -DBUILD_TESTING=OFF && \
-    make -j6 install 
+    cmake --build --preset build-gcc --config Release --target install --parallel 6
 
 FROM debian:trixie-slim AS runtime
 
