@@ -30,9 +30,3 @@ class PointCloud3(_message.Message):
 class LidarStreamRequest(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
-
-class SubSampledLidarStreamRequest(_message.Message):
-    __slots__ = ("voxel_size",)
-    VOXEL_SIZE_FIELD_NUMBER: _ClassVar[int]
-    voxel_size: float
-    def __init__(self, voxel_size: _Optional[float] = ...) -> None: ...

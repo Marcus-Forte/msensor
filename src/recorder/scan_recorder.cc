@@ -3,6 +3,7 @@
 #include "msensor/timing/timing.hh"
 #include "recording.pb.h"
 #include <mutex>
+#include <stdexcept>
 
 std::mutex g_mutex;
 
@@ -39,7 +40,9 @@ void ScanRecorder::record(const std::shared_ptr<const Scan3DI> &scan) {
     // Write size of data
     record_file_->write(reinterpret_cast<char *>(&bytes), sizeof(size_t));
     // Write the sensor data
-    entry.SerializeToOstream(record_file_->ostream());
+    if (!entry.SerializeToOstream(record_file_->ostream())) {
+      throw std::runtime_error("Failed to serialize LiDAR recording entry.");
+    }
     *record_file_->ostream() << std::flush;
   }
 }
@@ -66,7 +69,9 @@ void ScanRecorder::record(msensor::IMUData imu) {
     // Write size of data
     record_file_->write(reinterpret_cast<char *>(&bytes), sizeof(size_t));
     // Write the sensor data
-    entry.SerializeToOstream(record_file_->ostream());
+    if (!entry.SerializeToOstream(record_file_->ostream())) {
+      throw std::runtime_error("Failed to serialize IMU recording entry.");
+    }
     *record_file_->ostream() << std::flush;
   }
 }

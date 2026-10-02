@@ -30,17 +30,17 @@ void SimLidar::stopSampling() {
 
 std::shared_ptr<const Scan3DI> SimLidar::makeScan() {
   auto scan = std::make_shared<Scan3DI>();
-  scan->points->reserve(kNumPoints);
+  scan->points.reserve(kNumPoints);
 
   std::uniform_real_distribution<> dis(-10.0, 10.0);
   if (!steady_) {
     for (int i = 0; i < kNumPoints; ++i) {
-      scan->points->emplace_back(dis(gen_), dis(gen_), dis(gen_), i);
+      scan->points.emplace_back(dis(gen_), dis(gen_), dis(gen_), i);
     }
   } else {
     std::mt19937 fixed(67); // fixed seed for deterministic output
     for (int i = 0; i < kNumPoints; ++i) {
-      scan->points->emplace_back(dis(fixed), dis(fixed), dis(fixed), i);
+      scan->points.emplace_back(dis(fixed), dis(fixed), dis(fixed), i);
     }
   }
 

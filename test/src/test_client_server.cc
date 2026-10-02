@@ -43,7 +43,7 @@ TEST_F(TestClientServer, StreamsScansAndImuToClient) {
   const auto imu_sample = imu_sub->waitPop({}, 5s);
   ASSERT_NE(scan, nullptr);
   ASSERT_NE(imu_sample, nullptr);
-  EXPECT_EQ(scan->points->size(), 2000u);
+  EXPECT_EQ(scan->points.size(), 2000u);
   EXPECT_GT(scan->header.timestamp, 0u);
 }
 
@@ -70,35 +70,4 @@ TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
   std::this_thread::sleep_for(200ms);
   c.stop();
   empty_server->stop();
-}
-
-TEST_F(TestClientServer, SubSampledStreamFiltersAndSurvivesCancel) {
-  server->start();
-  lidar->startSampling();
-
-  auto channel = grpc::CreateChannel("localhost:50051",
-                                     grpc::InsecureChannelCredentials());
-  auto stub = sensors::LidarService::NewStub(channel);
-
-  for (int round = 0; round < 3; ++round) {
-    grpc::ClientContext context;
-    auto stream = stub->getSubSampledLidarScan(&context);
-
-    sensors::SubSampledLidarStreamRequest request;
-    request.set_voxel_size(5.0f);
-    ASSERT_TRUE(stream->Write(request));
-
-    // Invalid sizes are ignored, the stream keeps working.
-    request.set_voxel_size(-1.0f);
-    ASSERT_TRUE(stream->Write(request));
-
-    sensors::PointCloud3 cloud;
-    ASSERT_TRUE(stream->Read(&cloud));
-    // 2000 random points in a 20 m cube with 5 m voxels: at most 4^3.
-    EXPECT_GT(cloud.x_size(), 0);
-    EXPECT_LE(cloud.x_size(), 64);
-
-    // Drop the stream mid-flight; the server must clean up.
-    context.TryCancel();
-  }
 }

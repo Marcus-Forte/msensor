@@ -1,6 +1,8 @@
 #include "msensor/lidar/rp_lidar.hh"
+#include <cmath>
 #include <format>
 #include <iostream>
+#include <numbers>
 #include <stdexcept>
 
 #include "msensor/timing/timing.hh"
@@ -13,18 +15,19 @@ std::shared_ptr<Scan3DI>
 toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count,
          uint32_t sequence_number) {
   std::shared_ptr<Scan3DI> scan = std::make_shared<Scan3DI>();
-  scan->points = std::make_shared<PointCloud3I>();
-  scan->points->reserve(count);
-  int idx = 0;
+  scan->points.reserve(count);
   for (int pos = 0; pos < (int)count; ++pos) {
     if (nodes[pos].quality < 40)
       continue;
 
-    float angle_in_pi = (nodes[pos].angle_z_q14 * M_PI_2) / 16384.f;
-    const float dist_m = nodes[pos].dist_mm_q2 / 4000.0f;
-    float x = -cos(angle_in_pi) * dist_m;
-    float y = sin(angle_in_pi) * dist_m;
-    scan->points->emplace_back(x, y, 0, 0);
+    const float angle =
+        static_cast<float>(nodes[pos].angle_z_q14) *
+        std::numbers::pi_v<float> / 32768.0F;
+    const float dist_m =
+        static_cast<float>(nodes[pos].dist_mm_q2) / 4000.0F;
+    const float x = -std::cos(angle) * dist_m;
+    const float y = std::sin(angle) * dist_m;
+    scan->points.emplace_back(x, y, 0, 0);
   }
   scan->header = {Header{timing::getNowNs(), sequence_number}};
 

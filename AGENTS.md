@@ -3,7 +3,7 @@
 C++23 sensor driver framework exposed over gRPC (port 50051). Abstract interfaces in `include/msensor/interface/`; concrete drivers in `src/<type>/` (lidar, imu, camera, adc, plus sim_* variants); gRPC services in `grpc/` (`SensorsServer` wires drivers → services); protos in `proto/`. `docs/arch.puml` has the diagram.
 
 ## Build / test
-- Toolchain lives in the `mdnf1992/cpp-dev` image (devcontainer); PCL ≥1.15.1, OpenCV ≥4.10, jsoncpp, gRPC are expected there. Presets use `/opt/toolchain/gcc.cmake`.
+- Toolchain lives in the `mdnf1992/cpp-dev` image (devcontainer); OpenCV ≥4.10, jsoncpp, and gRPC are expected there. Presets use `/opt/toolchain/gcc.cmake`.
 - Configure/build: `cmake --preset gcc && cmake --build --preset build-gcc` (output in `build/gcc`, Ninja). CI instead does plain `mkdir build && cd build && cmake .. && make && ctest` in an arm64 container.
 - Tests (GTest, `test/src/`): `ctest --test-dir build/gcc`, or one test: `build/gcc/test/test_recorder --gtest_filter=Suite.Name`. Tests are only added when msensor is the top-level project.
 - `test/draft.cc` (`draft` target) is a scratch executable, not a test.

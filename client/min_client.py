@@ -187,52 +187,6 @@ def main():
     #             f"acc=({imu.ax:.3f}, {imu.ay:.3f}, {imu.az:.3f})"
     #         )
 
-    ## Voxel size slider → drives the bidi stream requests
-
-    # voxel_queue: queue.Queue[float] = queue.Queue()
-
-    # demo_slider = server.gui.add_slider(
-    #     "Voxel Size",
-    #     min=0.01,
-    #     max=1,
-    #     step=0.01,
-    #     initial_value=0.1,
-    #     hint="Voxel size sent to the subsampled LiDAR stream.",
-    # )
-
-    # def handle_demo_slider_update(event: viser.GuiEvent):
-    #     voxel_size = float(event.target.value)
-    #     voxel_queue.put(voxel_size)
-    #     print(f"Voxel size changed: {voxel_size:.1f}")
-
-    # demo_slider.on_update(handle_demo_slider_update)
-
-    # # Stream Subsampled Pointclouds
-
-    # def request_iterator():
-    #     while True:
-    #         voxel_size = voxel_queue.get()  # blocks until a value is available
-    #         yield lidar_pb2.SubSampledLidarStreamRequest(voxel_size=voxel_size)
-
-    # print(f"Connecting to gRPC server: {SERVER_ADDR}")
-    # with grpc.insecure_channel(SERVER_ADDR) as channel:
-    #     last_timestamp: int | None = None
-
-    #     stub = lidar_pb2_grpc.LidarServiceStub(channel)
-
-    #     for scan in stub.getSubSampledLidarScan(request_iterator()):
-    #         scan: lidar_pb2.PointCloud3
-
-    #         ts = int(scan.timestamp) if scan.HasField("timestamp") else 0
-    #         n = len(scan.x)
-    #         if last_timestamp is None:
-    #             dt_ms = 0
-    #         else:
-    #             dt_ms = ts - last_timestamp
-    #         last_timestamp = ts
-
-    #         print(f"LiDAR scan: points={n} timestamp={ts} dt={dt_ms}ms")
-    #         cloud.points, cloud.colors = _to_viser_lidar(scan)
 
 
 if __name__ == "__main__":

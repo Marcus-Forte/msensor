@@ -1,31 +1,36 @@
 #pragma once
 
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-
 #include "msensor/hub/SensorHub.hh"
 #include "msensor/interface/Header.hh"
 
-#include <stdint.h>
+#include <vector>
 
 namespace msensor {
 
-using Point3 = pcl::PointXYZ;
-using Point3I = pcl::PointXYZI;
+struct Point3 {
+  float x = 0.0F;
+  float y = 0.0F;
+  float z = 0.0F;
+};
 
-using PointCloud3 = pcl::PointCloud<Point3>;
-using PointCloud3I = pcl::PointCloud<Point3I>;
+struct Point3I {
+  float x = 0.0F;
+  float y = 0.0F;
+  float z = 0.0F;
+  float intensity = 0.0F;
+};
 
-/// \note We use `points` as shared_ptr to better interface with PCL.
+using PointCloud3 = std::vector<Point3>;
+using PointCloud3I = std::vector<Point3I>;
 
 /**
  * @brief 3D Pointcloud scan
  *
  */
 struct Scan3D {
-  Scan3D() : points(pcl::make_shared<PointCloud3>()), header(Header{0, 0}) {}
+  Scan3D() : header(Header{0, 0}) {}
   Header header;
-  PointCloud3::Ptr points;
+  PointCloud3 points;
 };
 
 /**
@@ -33,9 +38,9 @@ struct Scan3D {
  *
  */
 struct Scan3DI {
-  Scan3DI() : points(pcl::make_shared<PointCloud3I>()), header(Header{0, 0}) {}
+  Scan3DI() : header(Header{0, 0}) {}
   Header header;
-  PointCloud3I::Ptr points;
+  PointCloud3I points;
 };
 
 /**

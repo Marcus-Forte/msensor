@@ -17,13 +17,13 @@ fromProtobuf(const sensors::PointCloud3 &msg) {
   const float *z_data = msg.z().data();
   const uint32_t *intensity_data = msg.intensity().data();
 
-  scan->points->resize(msg.x_size());
+  scan->points.resize(msg.x_size());
 
   for (int i = 0; i < msg.x_size(); ++i) {
-    (*scan->points)[i].x = x_data[i];
-    (*scan->points)[i].y = y_data[i];
-    (*scan->points)[i].z = z_data[i];
-    (*scan->points)[i].intensity = intensity_data[i];
+    scan->points[i].x = x_data[i];
+    scan->points[i].y = y_data[i];
+    scan->points[i].z = z_data[i];
+    scan->points[i].intensity = intensity_data[i];
   }
 
   scan->header.timestamp = msg.header().timestamp();
@@ -36,7 +36,7 @@ sensors::PointCloud3
 toProtobuf(const std::shared_ptr<const msensor::Scan3DI> &scan) {
   sensors::PointCloud3 point_cloud;
 
-  if (!scan || !scan->points) {
+  if (!scan) {
     return point_cloud;
   }
 
@@ -49,13 +49,13 @@ toProtobuf(const std::shared_ptr<const msensor::Scan3DI> &scan) {
   auto *z = point_cloud.mutable_z();
   auto *intensity = point_cloud.mutable_intensity();
 
-  const auto point_count = static_cast<int>(scan->points->size());
+  const auto point_count = static_cast<int>(scan->points.size());
   x->Reserve(point_count);
   y->Reserve(point_count);
   z->Reserve(point_count);
   intensity->Reserve(point_count);
 
-  for (const auto &point : scan->points->points) {
+  for (const auto &point : scan->points) {
     x->Add(point.x);
     y->Add(point.y);
     z->Add(point.z);

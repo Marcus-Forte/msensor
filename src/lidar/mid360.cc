@@ -25,7 +25,7 @@ uint64_t readTimestamp(const uint8_t (&timestamp)[8]) {
 
 void convertEthPacketInto(const LivoxLidarEthernetPacket *eth_packet,
                           unsigned int data_pts,
-                          pcl::PointCloud<pcl::PointXYZI> &dest) {
+                          PointCloud3I &dest) {
   const auto *data_ = reinterpret_cast<const LivoxLidarCartesianHighRawPoint *>(
       eth_packet->data);
   const size_t count =
@@ -173,14 +173,14 @@ void Mid360::init() {
 
         if (!this_->accumulated_pointcloud_data_) {
           this_->accumulated_pointcloud_data_ = std::make_shared<Scan3DI>();
-          this_->accumulated_pointcloud_data_->points->reserve(
+          this_->accumulated_pointcloud_data_->points.reserve(
               this_->accumulate_scan_count_ * g_max_scan_points_per_packet);
           this_->accumulated_pointcloud_data_->header =
               Header{readTimestamp(data->timestamp), this_->scan_sequence_++};
         }
 
         convertEthPacketInto(data, data->dot_num,
-                             *this_->accumulated_pointcloud_data_->points);
+                             this_->accumulated_pointcloud_data_->points);
 
         if (++this_->scan_count_ % this_->accumulate_scan_count_ == 0) {
           this_->scan_hub_.publish(

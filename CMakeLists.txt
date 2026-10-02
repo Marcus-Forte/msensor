@@ -7,7 +7,6 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
-find_package(PCL 1.15.1 REQUIRED COMPONENTS common io filters) # for point types, point cloud serialization
 find_package(OpenCV 4.10 REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
 

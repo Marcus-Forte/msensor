@@ -1,11 +1,9 @@
 #include "lidar_service.hh"
 #include "msensor/conversions/conversions.hh"
 #include <atomic>
-#include <cmath>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
-#include <pcl/filters/voxel_grid.h>
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
     : lidar_(lidar) {}
@@ -132,10 +130,12 @@ private:
 // getLidarScan — server-streaming via WriteReactor
 // ---------------------------------------------------------------------------
 
-class LidarScanReactor
-    : public ScanStreamReactor<grpc::ServerWriteReactor<sensors::PointCloud3>> {
+using LidarScanStreamBase =
+    ScanStreamReactor<grpc::ServerWriteReactor<sensors::PointCloud3>>;
+
+class LidarScanReactor : public LidarScanStreamBase {
 public:
-  using ScanStreamReactor::ScanStreamReactor;
+  using LidarScanStreamBase::LidarScanStreamBase;
 
   void start() {
     std::cout << "Start Lidar scan stream." << std::endl;
@@ -144,7 +144,7 @@ public:
 
   void OnCancel() override {
     std::cout << "Ending Lidar scan stream." << std::endl;
-    ScanStreamReactor::OnCancel();
+    LidarScanStreamBase::OnCancel();
   }
 
 protected:
@@ -152,61 +152,6 @@ protected:
                sensors::PointCloud3 &out) override {
     out = toProtobuf(scan);
   }
-};
-
-// ---------------------------------------------------------------------------
-// getSubSampledLidarScan — bidi streaming via BidiReactor
-//
-// Reads and writes are fully independent:
-//   - OnReadDone:  updates the voxel size when the client sends a new value
-//   - writes:      the freshest scan is filtered and written back
-// ---------------------------------------------------------------------------
-
-class SubSampledLidarReactor
-    : public ScanStreamReactor<grpc::ServerBidiReactor<
-          sensors::SubSampledLidarStreamRequest, sensors::PointCloud3>> {
-public:
-  using ScanStreamReactor::ScanStreamReactor;
-
-  void start() {
-    std::cout << "Start subsampled Lidar scan stream." << std::endl;
-    StartRead(&request_); // start listening for client messages
-    begin();
-  }
-
-  void OnReadDone(bool ok) override {
-    if (!ok)
-      return; // client closed its half
-    const float vs = request_.voxel_size();
-    if (std::isfinite(vs) && vs > 0.0f) {
-      voxel_size_.store(vs);
-    } else {
-      std::cerr << "Ignoring invalid voxel size: " << vs << std::endl;
-    }
-    StartRead(&request_); // keep listening
-  }
-
-  void OnCancel() override {
-    std::cout << "Ending subsampled Lidar scan stream." << std::endl;
-    ScanStreamReactor::OnCancel();
-  }
-
-protected:
-  void convert(const std::shared_ptr<const msensor::Scan3DI> &scan,
-               sensors::PointCloud3 &out) override {
-    const float vs = voxel_size_.load();
-    pcl::VoxelGrid<msensor::Point3I> grid;
-    grid.setInputCloud(scan->points);
-    grid.setLeafSize(vs, vs, vs);
-    auto filtered = std::make_shared<msensor::Scan3DI>();
-    filtered->header = scan->header;
-    grid.filter(*filtered->points);
-    out = toProtobuf(filtered);
-  }
-
-private:
-  std::atomic<float> voxel_size_{0.1f};
-  sensors::SubSampledLidarStreamRequest request_;
 };
 
 /// Reactor that immediately ends the RPC with UNAVAILABLE.
@@ -229,19 +174,6 @@ grpc::ServerWriteReactor<sensors::PointCloud3> *LidarServiceImpl::getLidarScan(
         grpc::ServerWriteReactor<sensors::PointCloud3>>();
   }
   auto *reactor = new LidarScanReactor(lidar_->scans(), runner_);
-  reactor->start();
-  return reactor;
-}
-
-grpc::ServerBidiReactor<sensors::SubSampledLidarStreamRequest,
-                        sensors::PointCloud3> *
-LidarServiceImpl::getSubSampledLidarScan(
-    grpc::CallbackServerContext * /*context*/) {
-  if (!lidar_) {
-    return new UnavailableReactor<grpc::ServerBidiReactor<
-        sensors::SubSampledLidarStreamRequest, sensors::PointCloud3>>();
-  }
-  auto *reactor = new SubSampledLidarReactor(lidar_->scans(), runner_);
   reactor->start();
   return reactor;
 }

@@ -19,10 +19,6 @@ public:
   getLidarScan(grpc::CallbackServerContext *context,
                const sensors::LidarStreamRequest *request) override;
 
-  grpc::ServerBidiReactor<sensors::SubSampledLidarStreamRequest,
-                          sensors::PointCloud3> *
-  getSubSampledLidarScan(grpc::CallbackServerContext *context) override;
-
 private:
   std::shared_ptr<msensor::ILidar> lidar_;
   TaskRunner runner_;

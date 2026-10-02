@@ -1,5 +1,8 @@
 #include "msensor/recorder/scan_player.hh"
+#include <cstring>
 #include <fcntl.h>
+#include <limits>
+#include <stdexcept>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -20,7 +23,7 @@ ScanPlayer::ScanPlayer(const std::filesystem::path &file) {
   }
 
   void *memmap = mmap(nullptr, num_bytes_, PROT_READ, MAP_PRIVATE, fd, 0);
-  if (memory_map_ == MAP_FAILED) {
+  if (memmap == MAP_FAILED) {
     close(fd);
     throw std::runtime_error("Failed to map file into memory.");
   }
@@ -29,12 +32,21 @@ ScanPlayer::ScanPlayer(const std::filesystem::path &file) {
 }
 
 bool ScanPlayer::next() {
-  size_t msg_size;
-
   if (offset_ < num_bytes_) {
-    msg_size = *reinterpret_cast<size_t *>(memory_map_ + offset_);
+    size_t msg_size;
+    if (num_bytes_ - offset_ < sizeof(msg_size)) {
+      throw std::runtime_error("Truncated recording entry size.");
+    }
+    std::memcpy(&msg_size, memory_map_ + offset_, sizeof(msg_size));
     offset_ += sizeof(msg_size);
-    entry_.ParseFromArray(memory_map_ + offset_, msg_size);
+    if (msg_size > num_bytes_ - offset_ ||
+        msg_size > static_cast<size_t>(std::numeric_limits<int>::max())) {
+      throw std::runtime_error("Invalid recording entry size.");
+    }
+    if (!entry_.ParseFromArray(memory_map_ + offset_,
+                               static_cast<int>(msg_size))) {
+      throw std::runtime_error("Failed to parse recording entry.");
+    }
     offset_ += msg_size;
     return true;
   }

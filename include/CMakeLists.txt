@@ -15,7 +15,7 @@ target_link_libraries(IImu INTERFACE timing ISensorHub)
 
 add_library(ILidar INTERFACE)
 target_include_directories(ILidar INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ILidar INTERFACE timing ISensorHub ${PCL_LIBRARIES})
+target_link_libraries(ILidar INTERFACE timing ISensorHub)
 
 add_library(IAdc INTERFACE)
 target_include_directories(IAdc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
