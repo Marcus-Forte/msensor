@@ -3,10 +3,9 @@
 
 #include "msensor/conversions/conversions.hh"
 
-std::shared_ptr<msensor::Scan3DI>
-fromProtobuf(const sensors::PointCloud3 &msg) {
+msensor::Scan3DI fromProtobuf(const sensors::PointCloud3 &msg) {
 
-  auto scan = std::make_shared<msensor::Scan3DI>();
+  msensor::Scan3DI scan;
   if (msg.x_size() != msg.y_size() || msg.x_size() != msg.z_size() ||
       msg.x_size() != msg.intensity_size()) {
     return scan;
@@ -17,45 +16,40 @@ fromProtobuf(const sensors::PointCloud3 &msg) {
   const float *z_data = msg.z().data();
   const uint32_t *intensity_data = msg.intensity().data();
 
-  scan->points.resize(msg.x_size());
+  scan.points.resize(msg.x_size());
 
   for (int i = 0; i < msg.x_size(); ++i) {
-    scan->points[i].x = x_data[i];
-    scan->points[i].y = y_data[i];
-    scan->points[i].z = z_data[i];
-    scan->points[i].intensity = intensity_data[i];
+    scan.points[i].x = x_data[i];
+    scan.points[i].y = y_data[i];
+    scan.points[i].z = z_data[i];
+    scan.points[i].intensity = intensity_data[i];
   }
 
-  scan->header.timestamp = msg.header().timestamp();
-  scan->header.sequence_number = msg.header().sequence_number();
+  scan.header.timestamp = msg.header().timestamp();
+  scan.header.sequence_number = msg.header().sequence_number();
 
   return scan;
 }
 
-sensors::PointCloud3
-toProtobuf(const std::shared_ptr<const msensor::Scan3DI> &scan) {
+sensors::PointCloud3 toProtobuf(const msensor::Scan3DI &scan) {
   sensors::PointCloud3 point_cloud;
 
-  if (!scan) {
-    return point_cloud;
-  }
-
-  point_cloud.mutable_header()->set_timestamp(scan->header.timestamp);
+  point_cloud.mutable_header()->set_timestamp(scan.header.timestamp);
   point_cloud.mutable_header()->set_sequence_number(
-      scan->header.sequence_number);
+      scan.header.sequence_number);
 
   auto *x = point_cloud.mutable_x();
   auto *y = point_cloud.mutable_y();
   auto *z = point_cloud.mutable_z();
   auto *intensity = point_cloud.mutable_intensity();
 
-  const auto point_count = static_cast<int>(scan->points.size());
+  const auto point_count = static_cast<int>(scan.points.size());
   x->Reserve(point_count);
   y->Reserve(point_count);
   z->Reserve(point_count);
   intensity->Reserve(point_count);
 
-  for (const auto &point : scan->points) {
+  for (const auto &point : scan.points) {
     x->Add(point.x);
     y->Add(point.y);
     z->Add(point.z);
@@ -78,7 +72,7 @@ msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
   return imu_data;
 }
 
-sensors::IMUData toProtobuf(msensor::IMUData imu_data) {
+sensors::IMUData toProtobuf(const msensor::IMUData &imu_data) {
   sensors::IMUData grpc_data;
   grpc_data.set_ax(imu_data.ax);
   grpc_data.set_ay(imu_data.ay);

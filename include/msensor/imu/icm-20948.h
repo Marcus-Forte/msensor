@@ -1,9 +1,11 @@
 #pragma once
 
-#include "msensor/hub/PollingProducer.hh"
+#include <stop_token>
+#include <thread>
+
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/IImu.hh"
 #include <stdint.h>
-
 
 namespace msensor {
 class ICM20948 : public IImu {
@@ -35,14 +37,18 @@ public:
   bool calibrate() const;
 
   /// Start publishing samples (at a fixed 100 Hz).
-  void startSampling() override { producer_.start(); }
+  void startSampling() override;
   /// Stop publishing samples.
-  void stopSampling() override { producer_.stop(); }
-  SensorHub<IMUData> &imu() override { return hub_; }
+  void stopSampling() override;
+  /// Register the single sample consumer.
+  void setImuCallback(ImuCallback callback) override;
 
 private:
   /// Read one sample from the device.
-  std::shared_ptr<const IMUData> readSample();
+  IMUData readSample();
+
+  /// Sampling loop; runs on the sampling thread.
+  void run(std::stop_token st);
 
   xyz_data_ get_acc_data() const;
   xyz_data_ get_gyro_data() const;
@@ -112,8 +118,8 @@ private:
   int i2c_device_fd_;
 
   uint32_t sequence_number_ = 0;
-  SensorHub<IMUData> hub_;
-  PollingProducer<IMUData> producer_;
+  CallbackSlot<IMUData> callback_;
+  std::jthread thread_; // last: joined before the members above are destroyed
 };
 
 }

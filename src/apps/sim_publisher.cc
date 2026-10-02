@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
 
   sim_lidar->startSampling();
   sim_imu->startSampling();
+  sim_camera->startSampling();
 
   SensorsServer server(sim_adc, sim_camera, sim_imu, sim_lidar);
   server.start();

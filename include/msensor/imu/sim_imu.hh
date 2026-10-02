@@ -1,8 +1,10 @@
 #pragma once
 
 #include <random>
+#include <stop_token>
+#include <thread>
 
-#include "msensor/hub/PollingProducer.hh"
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/IImu.hh"
 
 namespace msensor {
@@ -14,15 +16,17 @@ public:
   SimImu();
   void startSampling() override;
   void stopSampling() override;
-  SensorHub<IMUData> &imu() override { return hub_; }
+  /// Register the single sample consumer.
+  void setImuCallback(ImuCallback callback) override;
 
 private:
-  std::shared_ptr<const IMUData> makeSample();
+  void run(std::stop_token st);
+  IMUData makeSample();
 
   std::mt19937 gen_;
   uint32_t sequence_number_ = 0;
-  SensorHub<IMUData> hub_;
-  PollingProducer<IMUData> producer_;
+  CallbackSlot<IMUData> callback_;
+  std::jthread thread_; // last: joined before the members above are destroyed
 };
 
 } // namespace msensor

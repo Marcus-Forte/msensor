@@ -21,6 +21,14 @@ void SensorsRemoteClient::init() {}
 void SensorsRemoteClient::startSampling() {}
 void SensorsRemoteClient::stopSampling() {}
 
+void SensorsRemoteClient::setScanCallback(ScanCallback callback) {
+  scan_callback_.setCallback(std::move(callback));
+}
+
+void SensorsRemoteClient::setImuCallback(ImuCallback callback) {
+  imu_callback_.setCallback(std::move(callback));
+}
+
 SensorsRemoteClient::~SensorsRemoteClient() { stop(); }
 
 namespace {
@@ -81,7 +89,7 @@ void SensorsRemoteClient::start() {
           return lidar_stub_->getLidarScan(ctx, request);
         },
         [&](const sensors::PointCloud3 &msg) {
-          scan_hub_.publish(fromProtobuf(msg));
+          scan_callback_.emit(fromProtobuf(msg));
         });
   });
 
@@ -93,7 +101,7 @@ void SensorsRemoteClient::start() {
           return imu_stub_->getImuData(ctx, request);
         },
         [&](const sensors::IMUData &msg) {
-          imu_hub_.publish(fromProtobuf(msg));
+          imu_callback_.emit(fromProtobuf(msg));
         });
   });
 }

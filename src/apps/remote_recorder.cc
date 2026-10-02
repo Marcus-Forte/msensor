@@ -11,7 +11,7 @@
 #include "sensors_remote_client.hh"
 
 namespace {
-constexpr auto kIdleSleep = std::chrono::milliseconds(5);
+constexpr auto kIdleSleep = std::chrono::milliseconds(100);
 
 std::atomic_bool g_should_stop = false;
 
@@ -41,10 +41,10 @@ int main(int argc, char **argv) {
   const std::string remote_address = argv[1];
   const auto file = std::make_shared<msensor::File>();
   msensor::ScanRecorder recorder(file);
-  bool has_reported_lidar_flow = false;
-  bool has_reported_imu_flow = false;
-  std::size_t lidar_entries_saved = 0;
-  std::size_t imu_entries_saved = 0;
+  std::atomic<bool> lidar_flow{false};
+  std::atomic<bool> imu_flow{false};
+  std::atomic<std::size_t> lidar_entries_saved{0};
+  std::atomic<std::size_t> imu_entries_saved{0};
 
   if (argc == 3) {
     std::string output_filename = argv[2];
@@ -59,39 +59,28 @@ int main(int argc, char **argv) {
   SensorsRemoteClient client(remote_address);
   client.init();
   std::cout << "Connecting to " << remote_address << "..." << std::endl;
-  auto lidar_sub =
-      client.scans().subscribe(msensor::SubscribePolicy::bounded(50));
-  auto imu_sub = client.imu().subscribe(msensor::SubscribePolicy::bounded(500));
+
+  // The callbacks run on the reader threads; the recorder is thread-safe.
+  client.setScanCallback([&](const msensor::Scan3DI &scan) {
+    recorder.record(scan);
+    ++lidar_entries_saved;
+    if (!lidar_flow.exchange(true)) {
+      std::cout << "Connected to " << remote_address << "; Receiving LiDAR data"
+                << std::endl;
+    }
+  });
+  client.setImuCallback([&](const msensor::IMUData &imu) {
+    recorder.record(imu);
+    ++imu_entries_saved;
+    if (!imu_flow.exchange(true)) {
+      std::cout << "Connected to " << remote_address << "; Receiving IMU data"
+                << std::endl;
+    }
+  });
   client.start();
 
   while (!g_should_stop.load()) {
-    bool recorded_sample = false;
-
-    while (const auto scan = lidar_sub->tryPop()) {
-      recorder.record(scan);
-      ++lidar_entries_saved;
-      recorded_sample = true;
-      if (!has_reported_lidar_flow) {
-        std::cout << "Connected to " << remote_address
-                  << "; Receiving LiDAR data" << std::endl;
-        has_reported_lidar_flow = true;
-      }
-    }
-
-    while (const auto imu = imu_sub->tryPop()) {
-      recorder.record(*imu);
-      ++imu_entries_saved;
-      recorded_sample = true;
-      if (!has_reported_imu_flow) {
-        std::cout << "Connected to " << remote_address << "; Receiving IMU data"
-                  << std::endl;
-        has_reported_imu_flow = true;
-      }
-    }
-
-    if (!recorded_sample) {
-      std::this_thread::sleep_for(kIdleSleep);
-    }
+    std::this_thread::sleep_for(kIdleSleep);
   }
 
   client.stop();

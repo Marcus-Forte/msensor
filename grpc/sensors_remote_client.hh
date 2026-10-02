@@ -7,6 +7,7 @@
 
 #include "imu.grpc.pb.h"
 #include "lidar.grpc.pb.h"
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
 
@@ -17,9 +18,9 @@
  */
 class SensorsRemoteClient : public msensor::ILidar, public msensor::IImu {
 public:
-  SensorsRemoteClient(const std::string &remote_ip);
+  explicit SensorsRemoteClient(const std::string &remote_ip);
   virtual ~SensorsRemoteClient();
-  /// Establish the gRPC channel and prepare internal queues.
+  /// Establish the gRPC channel and prepare internal state.
   void init() override;
   /// Start background threads that pull data from the server.
   void start();
@@ -28,10 +29,10 @@ public:
   void startSampling() override;
   void stopSampling() override;
 
-  /// Hub publishing LiDAR scans received over gRPC.
-  msensor::SensorHub<msensor::Scan3DI> &scans() override { return scan_hub_; }
-  /// Hub publishing IMU samples received over gRPC.
-  msensor::SensorHub<msensor::IMUData> &imu() override { return imu_hub_; }
+  /// Register the single consumer of LiDAR scans.
+  void setScanCallback(ScanCallback callback) override;
+  /// Register the single consumer of IMU samples.
+  void setImuCallback(ImuCallback callback) override;
 
 private:
   std::string remote_ip_;
@@ -39,8 +40,8 @@ private:
   std::unique_ptr<sensors::LidarService::Stub> lidar_stub_;
   std::unique_ptr<sensors::ImuService::Stub> imu_stub_;
 
-  msensor::SensorHub<msensor::Scan3DI> scan_hub_;
-  msensor::SensorHub<msensor::IMUData> imu_hub_;
+  msensor::CallbackSlot<msensor::Scan3DI> scan_callback_;
+  msensor::CallbackSlot<msensor::IMUData> imu_callback_;
 
   // Active stream contexts, so stop() can cancel blocked reads.
   std::mutex ctx_m_;

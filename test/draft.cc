@@ -13,9 +13,9 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < 100000; ++i) {
 
-    auto scan = std::make_shared<Scan3DI>();
+    Scan3DI scan;
 
-    scan->points.emplace_back(1, 2, 3, 4);
+    scan.points.emplace_back(1, 2, 3, 4);
     auto imu = IMUData{Header{0, 0}, 1, 2, 3, 4, 5, 6};
     recorder.record(scan);
     recorder.record(imu);

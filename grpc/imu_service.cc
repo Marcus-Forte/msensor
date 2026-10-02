@@ -1,41 +1,27 @@
 #include "imu_service.hh"
 #include "msensor/conversions/conversions.hh"
-#include <iostream>
-
-namespace {
-constexpr auto kPollTimeout = std::chrono::milliseconds(100);
-// About one second of samples at 200 Hz.
-constexpr std::size_t kMaxBufferedSamples = 200;
-} // namespace
+#include "sensor_stream.hh"
+#include <utility>
 
 ImuServiceImpl::ImuServiceImpl(std::shared_ptr<msensor::IImu> imu)
-    : imu_(imu) {}
+    : imu_(std::move(imu)) {}
 
-::grpc::Status
-ImuServiceImpl::getImuData(::grpc::ServerContext *context,
-                           const ::sensors::ImuStreamRequest *request,
-                           ::grpc::ServerWriter<sensors::IMUData> *writer) {
-
+grpc::ServerWriteReactor<sensors::IMUData> *ImuServiceImpl::getImuData(
+    grpc::CallbackServerContext * /*context*/,
+    const sensors::ImuStreamRequest * /*request*/) {
   if (!imu_) {
-    return grpc::Status(grpc::StatusCode::UNAVAILABLE, "IMU not available");
+    return new msensor::ErrorReactor<sensors::IMUData>(
+        {grpc::StatusCode::UNAVAILABLE, "IMU not available"});
   }
-
-  std::cout << "Start IMU data stream." << std::endl;
-
-  auto sub = imu_->imu().subscribe(
-      msensor::SubscribePolicy::bounded(kMaxBufferedSamples));
-
-  // Blocks on the subscription instead of polling. The timeout only bounds
-  // how long it takes to notice that the client went away.
-  while (!context->IsCancelled()) {
-    if (const auto imu_data = sub->waitPop({}, kPollTimeout)) {
-      if (!writer->Write(toProtobuf(*imu_data))) {
-        break;
-      }
-    }
+  if (in_use_.exchange(true)) {
+    return new msensor::ErrorReactor<sensors::IMUData>(
+        {grpc::StatusCode::RESOURCE_EXHAUSTED,
+         "Only one client per stream supported"});
   }
-
-  std::cout << "Ending IMU data stream." << std::endl;
-
-  return ::grpc::Status::OK;
+  return new msensor::SensorStreamReactor<msensor::IMUData, sensors::IMUData>(
+      [this](auto callback) { imu_->setImuCallback(std::move(callback)); },
+      [](const msensor::IMUData &sample, sensors::IMUData &out) {
+        out = toProtobuf(sample);
+      },
+      in_use_, "IMU data");
 }

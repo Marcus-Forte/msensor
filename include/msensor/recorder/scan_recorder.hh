@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "msensor/interface/IFile.hh"
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
@@ -32,13 +35,13 @@ public:
    * @brief Records a laser scan into scanfile. Thread-safe.
    *
    */
-  void record(const std::shared_ptr<const Scan3DI> &scan);
+  void record(const Scan3DI &scan);
 
   /**
    * @brief Records an IMU data into scanfile. Thread-safe.
    *
    */
-  void record(IMUData imu);
+  void record(const IMUData &imu);
 
   /**
    * @brief Stops the recording.

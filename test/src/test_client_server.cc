@@ -1,9 +1,12 @@
+#include "lidar.grpc.pb.h"
 #include "msensor/imu/sim_imu.hh"
 #include "msensor/lidar/sim_lidar.hh"
 #include "msensor_server.hh"
 #include "sensors_remote_client.hh"
+#include <condition_variable>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
+#include <mutex>
 
 using namespace std::chrono_literals;
 
@@ -31,35 +34,62 @@ protected:
 };
 
 TEST_F(TestClientServer, StreamsScansAndImuToClient) {
-  auto scan_sub = client->scans().subscribe();
-  auto imu_sub = client->imu().subscribe();
+  std::mutex m;
+  std::condition_variable cv;
+  msensor::Scan3DI scan;
+  msensor::IMUData imu_sample;
+  bool got_scan = false;
+  bool got_imu = false;
+
+  client->setScanCallback([&](const msensor::Scan3DI &sample) {
+    std::lock_guard lock(m);
+    scan = sample;
+    got_scan = true;
+    cv.notify_all();
+  });
+  client->setImuCallback([&](const msensor::IMUData &sample) {
+    std::lock_guard lock(m);
+    imu_sample = sample;
+    got_imu = true;
+    cv.notify_all();
+  });
 
   server->start();
   lidar->startSampling();
   imu->startSampling();
   client->start();
 
-  const auto scan = scan_sub->waitPop({}, 5s);
-  const auto imu_sample = imu_sub->waitPop({}, 5s);
-  ASSERT_NE(scan, nullptr);
-  ASSERT_NE(imu_sample, nullptr);
-  EXPECT_EQ(scan->points.size(), 2000u);
-  EXPECT_GT(scan->header.timestamp, 0u);
+  {
+    std::unique_lock lock(m);
+    ASSERT_TRUE(cv.wait_for(lock, 5s, [&] { return got_scan && got_imu; }));
+  }
+  EXPECT_EQ(scan.points.size(), 2000u);
+  EXPECT_GT(scan.header.timestamp, 0u);
 }
 
-TEST_F(TestClientServer, TwoClientsBothReceiveScans) {
-  SensorsRemoteClient second("localhost:50051");
-  auto sub_a = client->scans().subscribe();
-  auto sub_b = second.scans().subscribe();
-
+TEST_F(TestClientServer, SecondClientIsRejected) {
   server->start();
   lidar->startSampling();
-  client->start();
-  second.start();
 
-  EXPECT_NE(sub_a->waitPop({}, 5s), nullptr);
-  EXPECT_NE(sub_b->waitPop({}, 5s), nullptr);
-  second.stop();
+  auto channel = grpc::CreateChannel("localhost:50051",
+                                     grpc::InsecureChannelCredentials());
+  auto stub = sensors::LidarService::NewStub(channel);
+  const sensors::LidarStreamRequest request;
+
+  grpc::ClientContext first_context;
+  auto first = stub->getLidarScan(&first_context, request);
+  sensors::PointCloud3 msg;
+  ASSERT_TRUE(first->Read(&msg));
+
+  grpc::ClientContext second_context;
+  auto second = stub->getLidarScan(&second_context, request);
+  sensors::PointCloud3 rejected;
+  EXPECT_FALSE(second->Read(&rejected));
+  EXPECT_EQ(second->Finish().error_code(),
+            grpc::StatusCode::RESOURCE_EXHAUSTED);
+
+  first_context.TryCancel();
+  first->Finish();
 }
 
 TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {

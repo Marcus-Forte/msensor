@@ -1,8 +1,8 @@
 #pragma once
 
-#include "msensor/hub/SensorHub.hh"
 #include "msensor/interface/Header.hh"
 
+#include <functional>
 #include <vector>
 
 namespace msensor {
@@ -48,6 +48,9 @@ struct Scan3DI {
  */
 class ILidar {
 public:
+  /// Callback invoked for every produced scan.
+  using ScanCallback = std::function<void(const Scan3DI &)>;
+
   virtual ~ILidar() = default;
 
   /**
@@ -64,13 +67,14 @@ public:
   virtual void stopSampling() = 0;
 
   /**
-   * @brief Hub publishing lidar scans.
+   * @brief Register the single consumer of lidar scans.
    *
-   * Subscribe to receive every scan independently of other consumers.
+   * The callback runs on the driver's sampling thread. Passing an empty
+   * callback clears it. There is at most one consumer per stream.
    *
    * @note The associated timestamp is assumed to be the time
    * point[0] was measured. Unit: ns (1/1000000000 sec).
    */
-  virtual SensorHub<Scan3DI> &scans() = 0;
+  virtual void setScanCallback(ScanCallback callback) = 0;
 };
 } // namespace msensor

@@ -36,6 +36,8 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  camera->startSampling();
+
   SensorsServer server(nullptr, camera, nullptr, nullptr);
   server.start();
 

@@ -27,7 +27,7 @@ void ScanRecorder::start(const std::string &filename) {
   has_started_ = true;
 }
 
-void ScanRecorder::record(const std::shared_ptr<const Scan3DI> &scan) {
+void ScanRecorder::record(const Scan3DI &scan) {
   if (!has_started_)
     return;
 
@@ -47,7 +47,7 @@ void ScanRecorder::record(const std::shared_ptr<const Scan3DI> &scan) {
   }
 }
 
-void ScanRecorder::record(msensor::IMUData imu) {
+void ScanRecorder::record(const IMUData &imu) {
   if (!has_started_)
     return;
 

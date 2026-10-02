@@ -1,2 +1,11 @@
 build/
 .cache/
+.git
+client/.venv
+client/proto_gen
+docs/
+test/
+.github/
+.vscode/
+*.md
+todo

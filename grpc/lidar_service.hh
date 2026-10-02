@@ -1,19 +1,21 @@
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include "lidar.grpc.pb.h"
 #include "msensor/interface/ILidar.hh"
-#include "task_runner.hh"
 
 /**
- * @brief Implements the LiDAR gRPC service using the callback API.
+ * @brief Implements the LiDAR gRPC service.
  *
- * Each stream subscribes to the lidar's scan hub, so any number of clients can
- * stream at once and a slow client only drops its own scans. Streams are
- * event-driven: no thread is held while waiting for data.
+ * One client per stream: a second concurrent stream is rejected with
+ * RESOURCE_EXHAUSTED. Scans are pushed by the driver's callback, so the service
+ * holds no thread waiting for data.
  */
 class LidarServiceImpl : public sensors::LidarService::CallbackService {
 public:
-  LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar);
+  explicit LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar);
 
   grpc::ServerWriteReactor<sensors::PointCloud3> *
   getLidarScan(grpc::CallbackServerContext *context,
@@ -21,5 +23,5 @@ public:
 
 private:
   std::shared_ptr<msensor::ILidar> lidar_;
-  TaskRunner runner_;
+  std::atomic<bool> in_use_{false};
 };

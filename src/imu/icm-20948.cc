@@ -12,6 +12,7 @@ extern "C" {
 #include "msensor/imu/icm-20948.h"
 #include "msensor/imu/icm-20948_defs.h"
 #include "msensor/timing/timing.hh"
+#include <chrono>
 
 namespace msensor {
 
@@ -55,8 +56,7 @@ void ICM20948::bank_select(int bank) const {
 }
 
 ICM20948::ICM20948(int i2c_device, int i2c_icm_address)
-    : i2c_device_(i2c_device), i2c_icm_address_(i2c_icm_address),
-      producer_(hub_, [this] { return readSample(); }, kSamplePeriod) {
+    : i2c_device_(i2c_device), i2c_icm_address_(i2c_icm_address) {
   const std::string i2c_device_file = "/dev/i2c-" + std::to_string(i2c_device);
   i2c_device_fd_ = open(i2c_device_file.c_str(), O_RDWR);
 
@@ -68,6 +68,32 @@ ICM20948::ICM20948(int i2c_device, int i2c_icm_address)
   if (ioctl(i2c_device_fd_, I2C_SLAVE, i2c_icm_address) < 0) {
     throw std::runtime_error("unable to open IMU device: " +
                              std::to_string(i2c_icm_address)); // to hex?
+  }
+}
+
+void ICM20948::startSampling() {
+  if (thread_.joinable()) {
+    return;
+  }
+  thread_ = std::jthread([this](std::stop_token st) { run(st); });
+}
+
+void ICM20948::stopSampling() {
+  if (!thread_.joinable()) {
+    return;
+  }
+  thread_.request_stop();
+  thread_.join();
+}
+
+void ICM20948::setImuCallback(ImuCallback callback) {
+  callback_.setCallback(std::move(callback));
+}
+
+void ICM20948::run(std::stop_token st) {
+  while (!st.stop_requested()) {
+    callback_.emit(readSample());
+    std::this_thread::sleep_for(kSamplePeriod);
   }
 }
 
@@ -207,17 +233,19 @@ bool ICM20948::calibrate() const {
   return true;
 }
 
-std::shared_ptr<const IMUData> ICM20948::readSample() {
+IMUData ICM20948::readSample() {
   auto acc_data = get_acc_data();
   auto gyr_data = get_gyro_data();
   auto dbl_acc_data = convert_raw_data(acc_data, FACTOR_ACC_2G);
   auto dbl_gyr_data = convert_raw_data(gyr_data, FACTOR_GYRO_500DPS_RADS);
 
-  return std::make_shared<const IMUData>(IMUData{
-      Header{timing::getNowNs(), sequence_number_++},
-      static_cast<float>(dbl_acc_data.x), static_cast<float>(dbl_acc_data.y),
-      static_cast<float>(dbl_acc_data.z), static_cast<float>(dbl_gyr_data.x),
-      static_cast<float>(dbl_gyr_data.y), static_cast<float>(dbl_gyr_data.z)});
+  return IMUData{Header{timing::getNowNs(), sequence_number_++},
+                 static_cast<float>(dbl_acc_data.x),
+                 static_cast<float>(dbl_acc_data.y),
+                 static_cast<float>(dbl_acc_data.z),
+                 static_cast<float>(dbl_gyr_data.x),
+                 static_cast<float>(dbl_gyr_data.y),
+                 static_cast<float>(dbl_gyr_data.z)};
 }
 
 ICM20948::xyz_data_ ICM20948::get_acc_data() const {

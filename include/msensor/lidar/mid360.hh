@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
 
@@ -38,14 +39,14 @@ public:
   /// Initialize the Livox driver and connect to the device.
   void init() override;
 
-  /// Hub publishing each accumulated point cloud.
+  /// Register the single consumer of accumulated point clouds.
   /// \note Time is in nanoseconds and corresponds to the first point of the
   /// first UDP packet accumulated into the scan.
-  SensorHub<Scan3DI> &scans() override { return scan_hub_; }
+  void setScanCallback(ScanCallback callback) override;
 
-  /// Hub publishing IMU samples from the embedded sensor.
+  /// Register the single consumer of IMU samples from the embedded sensor.
   /// \note Time is in nanoseconds.
-  SensorHub<IMUData> &imu() override { return imu_hub_; }
+  void setImuCallback(ImuCallback callback) override;
 
   /// Start sampling LiDAR and IMU data.
   void startSampling() override;
@@ -63,8 +64,8 @@ private:
   const std::string config_;
   std::shared_ptr<Scan3DI> accumulated_pointcloud_data_;
 
-  SensorHub<Scan3DI> scan_hub_;
-  SensorHub<IMUData> imu_hub_;
+  CallbackSlot<Scan3DI> scan_callback_;
+  CallbackSlot<IMUData> imu_callback_;
 
   std::atomic<uint32_t> scan_sequence_{0};
   std::atomic<uint32_t> imu_sequence_{0};

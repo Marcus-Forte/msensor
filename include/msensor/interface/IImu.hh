@@ -1,8 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <stdint.h>
 
-#include "msensor/hub/SensorHub.hh"
 #include "msensor/interface/Header.hh"
 
 namespace msensor {
@@ -25,6 +25,9 @@ struct IMUData {
  */
 class IImu {
 public:
+  /// Callback invoked for every produced sample.
+  using ImuCallback = std::function<void(const IMUData &)>;
+
   virtual ~IImu() = default;
 
   /**
@@ -37,11 +40,12 @@ public:
   virtual void stopSampling() = 0;
 
   /**
-   * @brief Hub publishing IMU samples.
+   * @brief Register the single consumer of IMU samples.
    *
-   * Subscribe to receive every sample independently of other consumers.
+   * The callback runs on the driver's sampling thread. Passing an empty
+   * callback clears it. There is at most one consumer per stream.
    */
-  virtual SensorHub<IMUData> &imu() = 0;
+  virtual void setImuCallback(ImuCallback callback) = 0;
 };
 
 } // namespace msensor

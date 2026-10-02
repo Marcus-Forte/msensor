@@ -3,6 +3,9 @@
 
 #include <opencv2/videoio.hpp>
 
+#include <chrono>
+#include <thread>
+
 namespace msensor {
 
 OpenCvCamera::OpenCvCamera(std::string &&pipeline) {
@@ -11,9 +14,42 @@ OpenCvCamera::OpenCvCamera(std::string &&pipeline) {
 
 OpenCvCamera::OpenCvCamera(int device_id) { m_capture.open(device_id); }
 
-OpenCvCamera::~OpenCvCamera() { release(); }
+OpenCvCamera::~OpenCvCamera() {
+  stopSampling();
+  release();
+}
 
-bool OpenCvCamera::read(CameraFrame &frame) {
+void OpenCvCamera::startSampling() {
+  if (thread_.joinable()) {
+    return;
+  }
+  thread_ = std::jthread([this](std::stop_token st) { run(st); });
+}
+
+void OpenCvCamera::stopSampling() {
+  if (!thread_.joinable()) {
+    return;
+  }
+  thread_.request_stop();
+  thread_.join();
+}
+
+void OpenCvCamera::setFrameCallback(FrameCallback callback) {
+  callback_.setCallback(std::move(callback));
+}
+
+void OpenCvCamera::run(std::stop_token st) {
+  while (!st.stop_requested()) {
+    CameraFrame frame;
+    if (capture(frame)) {
+      callback_.emit(frame);
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  }
+}
+
+bool OpenCvCamera::capture(CameraFrame &frame) {
   if (!isOpened()) {
     return false;
   }

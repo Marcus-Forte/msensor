@@ -52,6 +52,14 @@ void Mid360::startSampling() {
 };
 void Mid360::stopSampling() { /* \todo */ };
 
+void Mid360::setScanCallback(ScanCallback callback) {
+  scan_callback_.setCallback(std::move(callback));
+}
+
+void Mid360::setImuCallback(ImuCallback callback) {
+  imu_callback_.setCallback(std::move(callback));
+}
+
 void Mid360::setMode(Mode mode) {
   // Wake up is actually idle...
   const LivoxLidarWorkMode _mode = mode == Mode::Normal
@@ -156,7 +164,7 @@ void Mid360::init() {
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
         auto *data_ = reinterpret_cast<LivoxLidarImuRawPoint *>(data->data);
 
-        this_->imu_hub_.publish(
+        this_->imu_callback_.emit(
             IMUData({readTimestamp(data->timestamp), this_->imu_sequence_++},
                     data_->acc_x, data_->acc_y, data_->acc_z, data_->gyro_x,
                     data_->gyro_y, data_->gyro_z));
@@ -183,8 +191,7 @@ void Mid360::init() {
                              this_->accumulated_pointcloud_data_->points);
 
         if (++this_->scan_count_ % this_->accumulate_scan_count_ == 0) {
-          this_->scan_hub_.publish(
-              std::move(this_->accumulated_pointcloud_data_));
+          this_->scan_callback_.emit(*this_->accumulated_pointcloud_data_);
           this_->accumulated_pointcloud_data_.reset();
         }
       },

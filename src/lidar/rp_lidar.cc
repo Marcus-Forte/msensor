@@ -1,9 +1,11 @@
 #include "msensor/lidar/rp_lidar.hh"
 #include <cmath>
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <numbers>
 #include <stdexcept>
+#include <thread>
 
 #include "msensor/timing/timing.hh"
 
@@ -11,11 +13,10 @@ namespace msensor {
 
 constexpr uint32_t g_baudRate = 115200;
 
-std::shared_ptr<Scan3DI>
-toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count,
-         uint32_t sequence_number) {
-  std::shared_ptr<Scan3DI> scan = std::make_shared<Scan3DI>();
-  scan->points.reserve(count);
+Scan3DI toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes,
+                 int count, uint32_t sequence_number) {
+  Scan3DI scan;
+  scan.points.reserve(count);
   for (int pos = 0; pos < (int)count; ++pos) {
     if (nodes[pos].quality < 40)
       continue;
@@ -27,15 +28,14 @@ toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes, int count,
         static_cast<float>(nodes[pos].dist_mm_q2) / 4000.0F;
     const float x = -std::cos(angle) * dist_m;
     const float y = std::sin(angle) * dist_m;
-    scan->points.emplace_back(x, y, 0, 0);
+    scan.points.emplace_back(x, y, 0, 0);
   }
-  scan->header = {Header{timing::getNowNs(), sequence_number}};
+  scan.header = {Header{timing::getNowNs(), sequence_number}};
 
   return scan;
 }
 
-RPLidar::RPLidar(const std::string &serial_port)
-    : producer_(hub_, [this] { return grabScan(); }) {
+RPLidar::RPLidar(const std::string &serial_port) {
 
   drv_ = *sl::createLidarDriver();
 
@@ -80,7 +80,7 @@ void RPLidar::init() {
   drv_->startScan(0, 1);
 }
 
-std::shared_ptr<const Scan3DI> RPLidar::grabScan() {
+std::optional<Scan3DI> RPLidar::grabScan() {
 
   sl_lidar_response_measurement_node_hq_t nodes[8192];
   size_t count = sizeof(nodes) / sizeof(nodes[0]);
@@ -90,7 +90,36 @@ std::shared_ptr<const Scan3DI> RPLidar::grabScan() {
     drv_->ascendScanData(nodes, count); // AKA Reorder
     return toScan3D(nodes, count, sequence_number_++);
   } else {
-    return nullptr;
+    return std::nullopt;
+  }
+}
+
+void RPLidar::startSampling() {
+  if (thread_.joinable()) {
+    return;
+  }
+  thread_ = std::jthread([this](std::stop_token st) { run(st); });
+}
+
+void RPLidar::stopSampling() {
+  if (!thread_.joinable()) {
+    return;
+  }
+  thread_.request_stop();
+  thread_.join();
+}
+
+void RPLidar::setScanCallback(ScanCallback callback) {
+  callback_.setCallback(std::move(callback));
+}
+
+void RPLidar::run(std::stop_token st) {
+  while (!st.stop_requested()) {
+    if (auto scan = grabScan()) {
+      callback_.emit(*scan);
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
 }
 

@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stop_token>
+#include <string>
+#include <thread>
+
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/ICamera.hh"
 #include <opencv2/videoio.hpp>
 
@@ -33,19 +38,16 @@ public:
   /**
    * @brief Destroy the OpenCV Camera object.
    *
-   * Automatically releases camera resources.
+   * Automatically stops capture and releases camera resources.
    */
   ~OpenCvCamera() override;
 
-  /**
-   * @brief Capture a single frame from the camera.
-   *
-   * @param frame Output parameter where the captured frame will be stored.
-   *              The Mat is reused to avoid reallocations in video loops.
-   * @return true if frame was successfully captured, false on error or if
-   * camera is not opened.
-   */
-  bool read(CameraFrame &frame) override;
+  /// Start the capture loop. No-op if already running.
+  void startSampling() override;
+  /// Stop the capture loop. No-op if not running.
+  void stopSampling() override;
+  /// Register the single frame consumer.
+  void setFrameCallback(FrameCallback callback) override;
 
   /**
    * @brief Check if the camera is successfully opened and ready to capture.
@@ -62,7 +64,14 @@ public:
   void release() override;
 
 private:
+  /// Capture a single frame. Returns false on error or if not opened.
+  bool capture(CameraFrame &frame);
+  /// Capture loop; runs on the capture thread.
+  void run(std::stop_token st);
+
   cv::VideoCapture m_capture; ///< OpenCV video capture object.
+  CallbackSlot<CameraFrame> callback_;
+  std::jthread thread_; // last: joined before the members above are destroyed
 };
 
 } // namespace msensor

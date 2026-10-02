@@ -32,11 +32,11 @@ TEST_F(TestRecorder, record_scan) {
   // redirect to string stream
   std::stringstream stream;
   EXPECT_CALL(*file_mock_, ostream()).WillRepeatedly(Return(&stream));
-  auto scan = std::make_shared<Scan3DI>();
+  auto scan = Scan3DI{};
   // Add points. Zeros may not be serialized.
-  scan->points.emplace_back(1, 2, 3);
-  scan->points.emplace_back(1, 2, 3);
-  scan->header.timestamp = 10;
+  scan.points.emplace_back(1, 2, 3);
+  scan.points.emplace_back(1, 2, 3);
+  scan.header.timestamp = 10;
 
   recorder_->start();
   recorder_->record(scan);
