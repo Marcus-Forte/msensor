@@ -3,5 +3,8 @@ build-mac/
 .cache/
 third_party/rplidar_sdk/.cache
 
+.env
+
+
 # Puml
 docs/generated/

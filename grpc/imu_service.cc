@@ -21,7 +21,7 @@ grpc::ServerWriteReactor<sensors::IMUData> *ImuServiceImpl::getImuData(
   return new msensor::SensorStreamReactor<msensor::IMUData, sensors::IMUData>(
       [this](auto callback) { imu_->setImuCallback(std::move(callback)); },
       [](const msensor::IMUData &sample, sensors::IMUData &out) {
-        out = toProtobuf(sample);
+        toProtobuf(sample, out);
       },
       in_use_, "IMU data");
 }

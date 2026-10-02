@@ -19,7 +19,7 @@ namespace msensor {
  */
 template <class T> class CallbackSlot {
 public:
-  using Callback = std::function<void(const T &)>;
+  using Callback = std::function<void(T)>;
 
   /// Install the consumer. Passing an empty callback clears it.
   void setCallback(Callback callback) {
@@ -28,10 +28,10 @@ public:
   }
 
   /// Deliver a sample to the consumer, if one is registered.
-  void emit(const T &sample) {
+  void emit(T sample) {
     std::lock_guard lock(mutex_);
     if (callback_) {
-      callback_(sample);
+      callback_(std::move(sample));
     }
   }
 

@@ -54,6 +54,8 @@ int main(int argc, char **argv) {
   }
 
   if (config.mid360.enable) {
+    std::cout << "Mid360 accumulation samples: "
+              << config.mid360.accumulate_scan_count << std::endl;
     if (config.mid360.config.empty()) {
       std::cerr << "mid360 is enabled but no config path was provided. "
                    "Exiting."
@@ -65,7 +67,8 @@ int main(int argc, char **argv) {
       return 1;
     } else {
       auto mid360 = std::make_shared<msensor::Mid360>(
-          std::string(config.mid360.config), 100);
+          std::string(config.mid360.config),
+          config.mid360.accumulate_scan_count);
       mid360->init();
       mid360->setMode(msensor::Mid360::Mode::Normal);
       mid360->setScanPattern(msensor::Mid360::ScanPattern::NonRepetitive);

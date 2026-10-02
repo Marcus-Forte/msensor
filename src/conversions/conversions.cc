@@ -31,8 +31,9 @@ msensor::Scan3DI fromProtobuf(const sensors::PointCloud3 &msg) {
   return scan;
 }
 
-sensors::PointCloud3 toProtobuf(const msensor::Scan3DI &scan) {
-  sensors::PointCloud3 point_cloud;
+void toProtobuf(const msensor::Scan3DI &scan,
+                sensors::PointCloud3 &point_cloud) {
+  point_cloud.Clear();
 
   point_cloud.mutable_header()->set_timestamp(scan.header.timestamp);
   point_cloud.mutable_header()->set_sequence_number(
@@ -56,7 +57,6 @@ sensors::PointCloud3 toProtobuf(const msensor::Scan3DI &scan) {
     intensity->Add(static_cast<uint32_t>(point.intensity));
   }
 
-  return point_cloud;
 }
 
 msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
@@ -72,8 +72,9 @@ msensor::IMUData fromProtobuf(const sensors::IMUData &msg) {
   return imu_data;
 }
 
-sensors::IMUData toProtobuf(const msensor::IMUData &imu_data) {
-  sensors::IMUData grpc_data;
+void toProtobuf(const msensor::IMUData &imu_data,
+                sensors::IMUData &grpc_data) {
+  grpc_data.Clear();
   grpc_data.set_ax(imu_data.ax);
   grpc_data.set_ay(imu_data.ay);
   grpc_data.set_az(imu_data.az);
@@ -83,12 +84,11 @@ sensors::IMUData toProtobuf(const msensor::IMUData &imu_data) {
   grpc_data.mutable_header()->set_timestamp(imu_data.header.timestamp);
   grpc_data.mutable_header()->set_sequence_number(
       imu_data.header.sequence_number);
-  return grpc_data;
 }
 
-sensors::CameraStreamReply toProtobuf(const msensor::CameraFrame &frame,
-                                      int quality) {
-  sensors::CameraStreamReply reply;
+void toProtobuf(const msensor::CameraFrame &frame,
+                sensors::CameraStreamReply &reply, int quality) {
+  reply.Clear();
   reply.set_width(frame.mat.cols);
   reply.set_height(frame.mat.rows);
 
@@ -113,5 +113,4 @@ sensors::CameraStreamReply toProtobuf(const msensor::CameraFrame &frame,
   reply.set_encoding(sensors::CameraEncoding::MJPEG);
   reply.set_image_data(jpeg_buffer.data(), jpeg_buffer.size());
 
-  return reply;
 }

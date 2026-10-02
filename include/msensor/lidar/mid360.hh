@@ -7,7 +7,6 @@
 #include "msensor/interface/ILidar.hh"
 
 #include <atomic>
-#include <memory>
 
 namespace msensor {
 
@@ -36,10 +35,12 @@ public:
    * `accumulate_scan_count`.
    */
   Mid360(std::string config, size_t accumulate_scan_count);
+  ~Mid360() override;
   /// Initialize the Livox driver and connect to the device.
   void init() override;
 
-  /// Register the single consumer of accumulated point clouds.
+  /// Register the single consumer of accumulated point clouds. The callback
+  /// runs on the Livox SDK point-cloud callback thread.
   /// \note Time is in nanoseconds and corresponds to the first point of the
   /// first UDP packet accumulated into the scan.
   void setScanCallback(ScanCallback callback) override;
@@ -62,7 +63,8 @@ public:
 
 private:
   const std::string config_;
-  std::shared_ptr<Scan3DI> accumulated_pointcloud_data_;
+  Scan3DI accumulated_scan_;
+  size_t packets_in_scan_{0};
 
   CallbackSlot<Scan3DI> scan_callback_;
   CallbackSlot<IMUData> imu_callback_;
@@ -72,9 +74,9 @@ private:
 
   const size_t accumulate_scan_count_;
 
-  size_t scan_count_;
-
   uint32_t connection_handle_{0};
+  bool sdk_initialized_{false};
+  bool sampling_{false};
 };
 
 } // namespace msensor

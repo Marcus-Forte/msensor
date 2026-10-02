@@ -26,7 +26,7 @@ struct IMUData {
 class IImu {
 public:
   /// Callback invoked for every produced sample.
-  using ImuCallback = std::function<void(const IMUData &)>;
+  using ImuCallback = std::function<void(IMUData)>;
 
   virtual ~IImu() = default;
 
@@ -42,8 +42,9 @@ public:
   /**
    * @brief Register the single consumer of IMU samples.
    *
-   * The callback runs on the driver's sampling thread. Passing an empty
-   * callback clears it. There is at most one consumer per stream.
+   * The callback runs on the driver's sampling thread and receives ownership
+   * of each sample. Passing an empty callback clears it. There is at most one
+   * consumer per stream.
    */
   virtual void setImuCallback(ImuCallback callback) = 0;
 };

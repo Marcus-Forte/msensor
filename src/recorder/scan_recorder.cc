@@ -32,7 +32,7 @@ void ScanRecorder::record(const Scan3DI &scan) {
     return;
 
   sensors::RecordingEntry entry;
-  *entry.mutable_scan() = toProtobuf(scan);
+  toProtobuf(scan, *entry.mutable_scan());
 
   auto bytes = entry.ByteSizeLong();
   {

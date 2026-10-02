@@ -23,7 +23,6 @@ services:
       dockerfile: deployment/DockerfileRuntime
     init: true
     restart: unless-stopped
-    pull_policy: always
     privileged: true
     network_mode: host
     command: ["sensor_publisher", "/usr/local/etc/publisher_config.json"]

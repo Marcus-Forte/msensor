@@ -23,7 +23,7 @@ CameraServiceImpl::getCameraFrame(
                                           sensors::CameraStreamReply>(
       [this](auto callback) { camera_->setFrameCallback(std::move(callback)); },
       [](const msensor::CameraFrame &frame, sensors::CameraStreamReply &out) {
-        out = toProtobuf(frame);
+        toProtobuf(frame, out);
       },
       in_use_, "camera");
 }

@@ -42,7 +42,7 @@ void OpenCvCamera::run(std::stop_token st) {
   while (!st.stop_requested()) {
     CameraFrame frame;
     if (capture(frame)) {
-      callback_.emit(frame);
+      callback_.emit(std::move(frame));
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

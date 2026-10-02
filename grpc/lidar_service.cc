@@ -22,7 +22,7 @@ grpc::ServerWriteReactor<sensors::PointCloud3> *LidarServiceImpl::getLidarScan(
                                           sensors::PointCloud3>(
       [this](auto callback) { lidar_->setScanCallback(std::move(callback)); },
       [](const msensor::Scan3DI &scan, sensors::PointCloud3 &out) {
-        out = toProtobuf(scan);
+        toProtobuf(scan, out);
       },
       in_use_, "Lidar scan");
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <cstddef>
 #include <string>
 
 namespace msensor {
@@ -27,6 +28,7 @@ public:
   struct Mid360Config {
     bool enable = false;
     std::string config;
+    std::size_t accumulate_scan_count = 100;
   } mid360;
 
   struct Ads1115Config {

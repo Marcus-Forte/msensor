@@ -116,7 +116,7 @@ void RPLidar::setScanCallback(ScanCallback callback) {
 void RPLidar::run(std::stop_token st) {
   while (!st.stop_requested()) {
     if (auto scan = grabScan()) {
-      callback_.emit(*scan);
+      callback_.emit(std::move(*scan));
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

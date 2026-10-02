@@ -13,6 +13,7 @@
 
   "mid360": {
     "enable": true,
-    "config": "mid360_config.json"
+    "config": "mid360_config.json",
+    "accumulate_scan_count": 100
   }
 }

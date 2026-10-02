@@ -25,7 +25,7 @@ namespace msensor {
 template <class Sample, class Response>
 class SensorStreamReactor : public grpc::ServerWriteReactor<Response> {
 public:
-  using Callback = std::function<void(const Sample &)>;
+  using Callback = std::function<void(Sample)>;
   /// Installs a callback on the driver; an empty callback clears it.
   using Install = std::function<void(Callback)>;
   using Convert = std::function<void(const Sample &, Response &)>;
@@ -35,7 +35,7 @@ public:
       : install_(std::move(install)), convert_(std::move(convert)),
         in_use_(in_use), name_(std::move(name)) {
     std::cout << "Start " << name_ << " stream." << std::endl;
-    install_([this](const Sample &sample) { onSample(sample); });
+    install_([this](Sample sample) { onSample(std::move(sample)); });
   }
 
   void OnWriteDone(bool ok) override {
@@ -70,13 +70,13 @@ public:
   }
 
 private:
-  void onSample(const Sample &sample) {
+  void onSample(Sample sample) {
     std::lock_guard lock(m_);
     if (done_) {
       return;
     }
     if (writing_) {
-      next_ = sample;
+      next_ = std::move(sample);
       return;
     }
     convert_(sample, current_);

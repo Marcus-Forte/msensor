@@ -142,6 +142,14 @@ Config Config::fromFile(const std::filesystem::path &config_path) {
     config.mid360.enable =
         readBoolMember(*mid360, "enable", config.mid360.enable);
     config.mid360.config = readStringMember(*mid360, "config", "");
+    const int accumulate_scan_count = readIntMember(
+        *mid360, "accumulate_scan_count",
+        static_cast<int>(config.mid360.accumulate_scan_count));
+    if (accumulate_scan_count <= 0) {
+      throw std::runtime_error("'mid360.accumulate_scan_count' must be positive.");
+    }
+    config.mid360.accumulate_scan_count =
+        static_cast<std::size_t>(accumulate_scan_count);
   }
 
   return config;

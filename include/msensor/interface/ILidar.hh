@@ -49,7 +49,7 @@ struct Scan3DI {
 class ILidar {
 public:
   /// Callback invoked for every produced scan.
-  using ScanCallback = std::function<void(const Scan3DI &)>;
+  using ScanCallback = std::function<void(Scan3DI)>;
 
   virtual ~ILidar() = default;
 
@@ -69,8 +69,9 @@ public:
   /**
    * @brief Register the single consumer of lidar scans.
    *
-   * The callback runs on the driver's sampling thread. Passing an empty
-   * callback clears it. There is at most one consumer per stream.
+   * The callback runs on the driver's sampling thread and receives ownership
+   * of each scan. Passing an empty callback clears it. There is at most one
+   * consumer per stream.
    *
    * @note The associated timestamp is assumed to be the time
    * point[0] was measured. Unit: ns (1/1000000000 sec).
