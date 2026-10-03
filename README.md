@@ -47,4 +47,4 @@ A `docker-compose.yml` is provided in `docker` folder illustrating how to compos
 ## Recorder
 
 Use `remote_recorder` to store sensory data to a `pbscan` file.
-Via docker use `docker run --rm -v /out/:/out mdnf1992/msensor remote_recorder <server> /out/scan.pbscan`
+Via docker use `docker run --rm -v ./:/app mdnf1992/msensor remote_recorder <server>`

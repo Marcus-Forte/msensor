@@ -15,6 +15,8 @@ RUN cmake --preset gcc -DCMAKE_BUILD_TYPE=Release \
 
 FROM debian:trixie-slim AS runtime
 
+WORKDIR /app
+
 ENV GST_PLUGIN_PATH=/usr/local/lib/aarch64-linux-gnu/gstreamer-1.0:/usr/local/lib/gstreamer-1.0
 
 # gcc-16 needs libstdc++6 >= 16 (GLIBCXX_3.4.35), which trixie lacks: install it from sid.
