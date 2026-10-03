@@ -20,7 +20,7 @@ services:
     image: mdnf1992/msensor
     build:
       context: ..
-      dockerfile: deployment/DockerfileRuntime
+      dockerfile: deployment/Dockerfile
     init: true
     restart: unless-stopped
     privileged: true
