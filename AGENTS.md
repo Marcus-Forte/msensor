@@ -13,6 +13,7 @@ C++23 sensor driver framework exposed over gRPC (port 50051). Abstract interface
 ## Gotchas
 - Hardware drivers (ads1115, icm-20948, rplidar, mid360, opencv camera) need real devices; use `sim_publisher` and `sim_*` drivers for local runs.
 - `sensor_publisher` takes a JSON config (default `/usr/local/etc/publisher_config.json`, or the single CLI arg); template is `config/publisher_config.json`. The other `*_publisher` apps are older per-sensor executables (see `todo`: to be merged).
+- `playback_publisher` replays a `.pbscan` recording as a sensor source over gRPC: `playback_publisher -f <file> -s <speed> [-p <port>]` (`speed` 1.0 = real time, 0 = max; default port 50051). It always starts paused; Space toggles playback, `r` rewinds and pauses, Right Arrow doubles speed, Left Arrow halves it (0.125x minimum; from unpaced `0`, it selects 64x), and Ctrl-C exits. It stays running at EOF and can replay through the existing sensor streams. It is backed by `msensor::RecordingSensorDriver` (`src/recorder/`), a push-based LiDAR+IMU source.
 - Python client (`client/`, uses `uv`): generated code in `client/proto_gen/` must be regenerated after `.proto` changes with the `grpc_tools.protoc` command in `client/README.md` (the second `robot.proto` command there is stale; no such file here).
 - `.clangd` points at `build/` for `compile_commands.json`, but presets output to `build/gcc`.
 

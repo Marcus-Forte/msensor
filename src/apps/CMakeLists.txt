@@ -26,10 +26,15 @@ target_link_libraries(sensor_publisher ads1115 rp_lidar icm-20948 ${PROJECT_NAME
 add_executable(remote_recorder remote_recorder.cc)
 target_link_libraries(remote_recorder ${PROJECT_NAME})
 
+# Replays a recorded .pbscan over gRPC as a sensor source.
+add_executable(playback_publisher playback_publisher.cc)
+target_link_libraries(playback_publisher ${PROJECT_NAME})
+
 include(GNUInstallDirs)
 install(TARGETS 
     sensor_publisher
     remote_recorder
+    playback_publisher
     rplidar_publisher
     mid360_publisher
     sim_publisher

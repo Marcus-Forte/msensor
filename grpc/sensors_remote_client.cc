@@ -42,7 +42,9 @@ void interruptibleSleep(std::stop_token st, std::chrono::milliseconds d) {
 
 /// Opens a stream, forwards every message to `on_msg`, and reopens the stream
 /// after a delay when it ends. `active` always points at the live context (or
-/// is null), under `m`, so stop() can cancel a blocked Read().
+/// is null), under `m`, so stop() can cancel a blocked Read(). Stream closure
+/// is treated as temporary so a running consumer survives a server restart or
+/// a finite playback reaching its end.
 template <class Msg, class Open, class OnMsg>
 void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
               const char *name, Open open, OnMsg on_msg) {
@@ -56,12 +58,14 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
       active = &context;
     }
 
+    grpc::Status status;
     {
       auto reader = open(&context);
       Msg msg;
       while (reader->Read(&msg)) {
         on_msg(msg);
       }
+      status = reader->Finish();
     }
 
     {
@@ -72,7 +76,13 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
     if (st.stop_requested()) {
       return;
     }
-    std::cout << "Unable to read remote " << name << "." << std::endl;
+    if (status.ok()) {
+      std::cout << "Remote " << name << " stream ended; reconnecting."
+                << std::endl;
+    } else {
+      std::cout << "Unable to read remote " << name << ": "
+                << status.error_message() << std::endl;
+    }
     interruptibleSleep(st,
                        std::chrono::milliseconds(g_connectionRecoverDelayMs));
   }

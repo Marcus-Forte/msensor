@@ -53,6 +53,8 @@ bool ScanPlayer::next() {
   return false;
 }
 
+void ScanPlayer::reset() { offset_ = 0; }
+
 const sensors::RecordingEntry &ScanPlayer::getLastEntry() { return entry_; }
 
 } // namespace msensor

@@ -16,6 +16,8 @@ public:
 
   /// Advance to the next entry; returns false on end-of-file.
   bool next();
+  /// Rewind to the first entry.
+  void reset();
   /// Retrieve the last decoded entry.
   const sensors::RecordingEntry &getLastEntry();
 

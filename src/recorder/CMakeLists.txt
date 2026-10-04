@@ -1,7 +1,8 @@
 add_library(scan_recorder
 scan_player.cc
-scan_recorder.cc)
-target_link_libraries(scan_recorder sensors_proto ILidar timing file msensor::conversions)
+scan_recorder.cc
+recording_driver.cc)
+target_link_libraries(scan_recorder sensors_proto ILidar IImu timing file msensor::conversions)
 
 add_library(msensor::scan_recorder ALIAS scan_recorder)
 

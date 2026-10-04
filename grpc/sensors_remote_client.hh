@@ -1,6 +1,7 @@
 #pragma once
 
 #include <grpcpp/channel.h>
+
 #include <memory>
 #include <mutex>
 #include <thread>
