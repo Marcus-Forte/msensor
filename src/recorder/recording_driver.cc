@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -45,7 +46,10 @@ void RecordingSensorDriver::setImuCallback(ImuCallback callback) {
 }
 
 void RecordingSensorDriver::setPaused(bool paused) {
-  paused_.store(paused);
+  {
+    std::lock_guard lock(control_mutex_);
+    paused_.store(paused);
+  }
   control_cv_.notify_all();
 }
 
@@ -53,9 +57,16 @@ bool RecordingSensorDriver::isPaused() const { return paused_.load(); }
 
 void RecordingSensorDriver::increaseSpeed() {
   constexpr double kMaxSpeed = 1024.0;
-  const double current = speed_.load();
-  if (current > 0.0 && current < kMaxSpeed) {
-    speed_.store(std::min(current * 2.0, kMaxSpeed));
+  bool changed = false;
+  {
+    std::lock_guard lock(control_mutex_);
+    const double current = speed_.load();
+    if (current > 0.0 && current < kMaxSpeed) {
+      speed_.store(std::min(current * 2.0, kMaxSpeed));
+      changed = true;
+    }
+  }
+  if (changed) {
     control_cv_.notify_all();
   }
 }
@@ -63,12 +74,19 @@ void RecordingSensorDriver::increaseSpeed() {
 void RecordingSensorDriver::decreaseSpeed() {
   constexpr double kMinSpeed = 0.125;
   constexpr double kSpeedFromUnpaced = 64.0;
-  const double current = speed_.load();
-  if (current == 0.0) {
-    speed_.store(kSpeedFromUnpaced);
-    control_cv_.notify_all();
-  } else if (current > kMinSpeed) {
-    speed_.store(std::max(current / 2.0, kMinSpeed));
+  bool changed = false;
+  {
+    std::lock_guard lock(control_mutex_);
+    const double current = speed_.load();
+    if (current == 0.0) {
+      speed_.store(kSpeedFromUnpaced);
+      changed = true;
+    } else if (current > kMinSpeed) {
+      speed_.store(std::max(current / 2.0, kMinSpeed));
+      changed = true;
+    }
+  }
+  if (changed) {
     control_cv_.notify_all();
   }
 }
@@ -76,7 +94,10 @@ void RecordingSensorDriver::decreaseSpeed() {
 double RecordingSensorDriver::speed() const { return speed_.load(); }
 
 void RecordingSensorDriver::requestReset() {
-  reset_requested_.store(true);
+  {
+    std::lock_guard lock(control_mutex_);
+    reset_requested_.store(true);
+  }
   control_cv_.notify_all();
 }
 
@@ -84,20 +105,58 @@ bool RecordingSensorDriver::isFinished() const { return finished_.load(); }
 
 void RecordingSensorDriver::run(std::stop_token st) {
   auto wall_start = std::chrono::steady_clock::now();
+  double pacing_speed = speed_.load();
   bool have_origin = false;
   uint64_t origin_ns = 0;
+  bool have_emitted_timestamp = false;
+  uint64_t last_emitted_timestamp_ns = 0;
+
+  // Preserve the media-time progress made at the old speed when changing the
+  // wall-clock mapping. Unpaced playback anchors from the last emitted entry.
+  const auto rebase_pacing = [&](double new_speed) {
+    const auto now = std::chrono::steady_clock::now();
+    if (have_origin) {
+      if (pacing_speed > 0.0) {
+        const long double elapsed_ns =
+            std::chrono::duration<long double, std::nano>(now - wall_start)
+                .count();
+        const long double advanced_ns =
+            static_cast<long double>(origin_ns) + elapsed_ns * pacing_speed;
+        origin_ns = static_cast<uint64_t>(std::min(
+            advanced_ns,
+            static_cast<long double>(std::numeric_limits<uint64_t>::max())));
+      } else if (have_emitted_timestamp) {
+        origin_ns = last_emitted_timestamp_ns;
+      }
+      wall_start = now;
+    }
+    pacing_speed = new_speed;
+  };
 
   const auto reset_playback = [&]() {
     player_.reset();
     wall_start = std::chrono::steady_clock::now();
+    pacing_speed = speed_.load();
     have_origin = false;
     origin_ns = 0;
+    have_emitted_timestamp = false;
+    last_emitted_timestamp_ns = 0;
     finished_.store(false);
   };
 
   while (!st.stop_requested()) {
-    if (reset_requested_.exchange(false)) {
+    bool reset_requested;
+    {
+      std::lock_guard lock(control_mutex_);
+      reset_requested = reset_requested_.exchange(false);
+    }
+    if (reset_requested) {
       reset_playback();
+    }
+
+    const double observed_speed = speed_.load();
+    if (observed_speed != pacing_speed) {
+      rebase_pacing(observed_speed);
     }
 
     if (paused_.load()) {
@@ -113,9 +172,9 @@ void RecordingSensorDriver::run(std::stop_token st) {
     }
 
     if (!player_.next()) {
+      std::unique_lock lock(control_mutex_);
       paused_.store(true);
       finished_.store(true);
-      std::unique_lock lock(control_mutex_);
       control_cv_.wait(lock, st, [this]() { return reset_requested_.load(); });
       continue;
     }
@@ -141,7 +200,17 @@ void RecordingSensorDriver::run(std::stop_token st) {
 
     bool restart_entry = false;
     while (!st.stop_requested()) {
-      if (reset_requested_.exchange(false)) {
+      const double observed_speed = speed_.load();
+      if (observed_speed != pacing_speed) {
+        rebase_pacing(observed_speed);
+      }
+
+      bool reset_requested;
+      {
+        std::lock_guard lock(control_mutex_);
+        reset_requested = reset_requested_.exchange(false);
+      }
+      if (reset_requested) {
         reset_playback();
         restart_entry = true;
         break;
@@ -162,7 +231,7 @@ void RecordingSensorDriver::run(std::stop_token st) {
         continue;
       }
 
-      const double current_speed = speed_.load();
+      const double current_speed = pacing_speed;
       if (current_speed <= 0.0 || timestamp_ns <= origin_ns) {
         break;
       }
@@ -184,7 +253,11 @@ void RecordingSensorDriver::run(std::stop_token st) {
     if (restart_entry) {
       continue;
     }
-    if (reset_requested_.exchange(false)) {
+    {
+      std::lock_guard lock(control_mutex_);
+      reset_requested = reset_requested_.exchange(false);
+    }
+    if (reset_requested) {
       reset_playback();
       continue;
     }
@@ -202,6 +275,8 @@ void RecordingSensorDriver::run(std::stop_token st) {
     default:
       break;
     }
+    last_emitted_timestamp_ns = timestamp_ns;
+    have_emitted_timestamp = true;
   }
 
   finished_.store(true);

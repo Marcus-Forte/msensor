@@ -53,13 +53,15 @@ private:
 void print_usage(const char *program) {
   std::cout
       << "Usage: " << program
-      << " -f <recording.pbscan> [-s <speed>] [-p <port>]\n"
+      << " -f <recording.pbscan> [-s <speed>] [-p <port>] [--autoplay]\n"
       << "  -f, --file <file>   Recording to replay (required)\n"
       << "  -s, --speed <x>     Playback speed (1.0 = real time, 0 = max) "
          "[default 1.0]\n"
       << "  -p, --port <port>   gRPC listen port [default 50051]\n"
+      << "  -a, --autoplay      Start playback immediately (useful without "
+         "stdin)\n"
       << "  -h, --help          Show this help message\n"
-      << "Playback starts paused.\n"
+      << "Playback starts paused unless --autoplay is specified.\n"
       << "Controls: Space pause/resume, r rewind, Right speed up, "
          "Left slow down, Ctrl-C quit.\n";
 }
@@ -70,16 +72,18 @@ int main(int argc, char **argv) {
   std::string file;
   double speed = 1.0;
   int port = 50051;
+  bool autoplay = false;
 
   static const option long_options[] = {
       {"file", required_argument, nullptr, 'f'},
       {"speed", required_argument, nullptr, 's'},
       {"port", required_argument, nullptr, 'p'},
+      {"autoplay", no_argument, nullptr, 'a'},
       {"help", no_argument, nullptr, 'h'},
       {nullptr, 0, nullptr, 0}};
 
   int opt;
-  while ((opt = getopt_long(argc, argv, "f:s:p:h", long_options, nullptr)) !=
+  while ((opt = getopt_long(argc, argv, "f:s:p:ah", long_options, nullptr)) !=
          -1) {
     switch (opt) {
     case 'f':
@@ -90,6 +94,9 @@ int main(int argc, char **argv) {
       break;
     case 'p':
       port = std::stoi(optarg);
+      break;
+    case 'a':
+      autoplay = true;
       break;
     case 'h':
       print_usage(argv[0]);
@@ -118,7 +125,7 @@ int main(int argc, char **argv) {
   std::signal(SIGTERM, request_stop);
 
   auto driver =
-      std::make_shared<msensor::RecordingSensorDriver>(file, speed, true);
+      std::make_shared<msensor::RecordingSensorDriver>(file, speed, !autoplay);
   driver->init();
 
   SensorsServer server(nullptr, nullptr, driver, driver,
@@ -128,8 +135,9 @@ int main(int argc, char **argv) {
   TerminalInputMode terminal_mode;
   driver->startSampling();
 
-  std::cout << "Loaded " << file << " at speed " << speed
-            << " (0 = max); paused at start. Space: play/pause, r: rewind, "
+  std::cout << "Loaded " << file << " at speed " << speed << " (0 = max); "
+            << (autoplay ? "playing" : "paused")
+            << " at start. Space: play/pause, r: rewind, "
                "Right/Left: speed up/down, Ctrl-C: quit."
             << std::endl;
 

@@ -31,16 +31,21 @@ add_executable(playback_publisher playback_publisher.cc)
 target_link_libraries(playback_publisher ${PROJECT_NAME})
 
 include(GNUInstallDirs)
-install(TARGETS 
+set(msensor_install_targets
     sensor_publisher
     remote_recorder
-    playback_publisher
     rplidar_publisher
     mid360_publisher
     sim_publisher
     icm20948_publisher
     ads1115_publisher
     camera_publisher
+)
+if(MSENSOR_INSTALL_PLAYBACK_PUBLISHER AND TARGET playback_publisher)
+    list(APPEND msensor_install_targets playback_publisher)
+endif()
+
+install(TARGETS ${msensor_install_targets}
 DESTINATION ${CMAKE_INSTALL_BINDIR} RUNTIME_DEPENDENCY_SET runtime_targets)
 
 # Import runtime dependencies while excluding system libraries from /lib and

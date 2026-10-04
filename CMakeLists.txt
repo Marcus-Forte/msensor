@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
 project(msensor)
 
+if(NOT DEFINED MSENSOR_INSTALL_PLAYBACK_PUBLISHER)
+  set(_msensor_install_playback_default ON)
+  if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(_msensor_install_playback_default OFF)
+  endif()
+  option(MSENSOR_INSTALL_PLAYBACK_PUBLISHER
+         "Install the playback_publisher executable" ${_msensor_install_playback_default})
+endif()
+
 # Only override project-level defaults when building standalone
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_CXX_STANDARD 23)
