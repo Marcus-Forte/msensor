@@ -13,15 +13,13 @@ RUN cmake --preset gcc -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTING=OFF && \
     cmake --build --preset build-gcc --config Release --target install --parallel 6
 
-FROM debian:trixie-slim AS runtime
+FROM debian:sid-slim AS runtime
 
 WORKDIR /app
 
 ENV GST_PLUGIN_PATH=/usr/local/lib/aarch64-linux-gnu/gstreamer-1.0:/usr/local/lib/gstreamer-1.0
 
-# gcc-16 needs libstdc++6 >= 16 (GLIBCXX_3.4.35), which trixie lacks: install it from sid.
-RUN printf 'Types: deb\nURIs: http://deb.debian.org/debian\nSuites: sid\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.pgp\n' > /etc/apt/sources.list.d/sid.sources && \
-    apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \
     libstdc++6 \
     libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libi2c0 libjsoncpp26 \
     && rm -rf /var/lib/apt/lists/*

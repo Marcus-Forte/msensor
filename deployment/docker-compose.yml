@@ -25,11 +25,11 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
-    command: ["sensor_publisher", "/usr/local/etc/publisher_config.json"]
+    command: ["sensor_publisher", "/config/publisher_config.json"]
     
     ports:
       - "50051:50051"
     volumes:
-      - "./cfg:/usr/local/etc"
+      - "./config/:/config"
       - "/dev:/dev"
       - "/run/udev:/run/udev"

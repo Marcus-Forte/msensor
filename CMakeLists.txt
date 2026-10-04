@@ -25,8 +25,8 @@ add_subdirectory(proto)
 add_subdirectory(grpc)
 add_subdirectory(src)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cfg/mid360_config.json
-              ${CMAKE_CURRENT_SOURCE_DIR}/cfg/publisher_config.json
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/mid360_config.json
+              ${CMAKE_CURRENT_SOURCE_DIR}/config/publisher_config.json
 DESTINATION ${CMAKE_INSTALL_SYSCONFDIR})
 
 include(CTest)
