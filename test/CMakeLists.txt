@@ -46,6 +46,15 @@ add_executable(test_shutdown_signal src/test_shutdown_signal.cc)
 target_link_libraries(test_shutdown_signal msensor::server gtest_main gtest)
 gtest_discover_tests(test_shutdown_signal)
 
+add_executable(test_config src/test_config.cc)
+target_link_libraries(test_config msensor::config gtest_main gtest)
+target_compile_definitions(test_config PRIVATE MSENSOR_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+gtest_discover_tests(test_config)
+
+add_executable(test_sensor_factory src/test_sensor_factory.cc)
+target_link_libraries(test_sensor_factory msensor::sensor_factory gtest_main gtest)
+gtest_discover_tests(test_sensor_factory)
+
 add_executable(draft draft.cc)
 target_link_libraries(draft msensor::scan_recorder)
 

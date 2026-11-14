@@ -10,16 +10,9 @@
 #include "camera_service.hh"
 #include "imu_service.hh"
 #include "lidar_service.hh"
+#include "msensor/interface/Sensors.hh"
 
 namespace msensor {
-
-/// The sensors a SensorsServer publishes; leave a member null to not serve it.
-struct Sensors {
-  std::shared_ptr<IAdc> adc;
-  std::shared_ptr<ICamera> camera;
-  std::shared_ptr<IImu> imu;
-  std::shared_ptr<ILidar> lidar;
-};
 
 struct ServerOptions {
   std::string listen_address = "0.0.0.0:50051";

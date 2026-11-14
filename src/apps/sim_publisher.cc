@@ -1,37 +1,29 @@
-#include <getopt.h>
+#include <exception>
 #include <iostream>
-#include <thread>
 
-#include "msensor/adc/sim_adc.hh"
-#include "msensor/camera/sim_camera.hh"
-#include "msensor/imu/sim_imu.hh"
-#include "msensor/lidar/sim_lidar.hh"
+#include "msensor/config/config.hh"
+#include "msensor/factory/sensor_factory.hh"
 #include "msensor_server.hh"
 #include "shutdown_signal.hh"
 
-void print_usage() { std::cout << "Usage: sim_publisher" << std::endl; }
+int main() {
+  try {
+    msensor::Config config;
+    config.rplidar.enable = false;
+    config.camera.enable = false;
+    config.sim = {.lidar = true, .imu = true, .camera = true, .adc = true};
 
-int main(int argc, char **argv) {
+    msensor::SensorsServer server(msensor::makeSensors(config));
+    server.start();
 
-  auto sim_lidar = std::make_shared<msensor::SimLidar>(false);
-  auto sim_imu = std::make_shared<msensor::SimImu>();
-  auto sim_camera = std::make_shared<msensor::SimCamera>();
-  auto sim_adc = std::make_shared<msensor::SimAdc>();
-
-  sim_lidar->startSampling();
-  sim_imu->startSampling();
-  sim_camera->startSampling();
-
-  msensor::SensorsServer server({.adc = sim_adc,
-                                 .camera = sim_camera,
-                                 .imu = sim_imu,
-                                 .lidar = sim_lidar});
-  server.start();
-
-  std::cout << "Publishing scan and Imu data" << std::endl;
-  // Serve until SIGINT/SIGTERM, then shut down and return so the driver
-  // destructors run (the server is destroyed first).
-  msensor::waitForShutdownSignal();
-  server.stop();
+    std::cout << "Publishing scan and Imu data" << std::endl;
+    // Serve until SIGINT/SIGTERM, then shut down and return so the driver
+    // destructors run (the server is destroyed first).
+    msensor::waitForShutdownSignal();
+    server.stop();
+  } catch (const std::exception &e) {
+    std::cerr << "sim_publisher: " << e.what() << std::endl;
+    return 1;
+  }
   return 0;
 }

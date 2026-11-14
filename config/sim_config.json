@@ -1,0 +1,13 @@
+{
+  "icm20948": { "enable": false },
+  "rplidar": { "enable": false },
+  "camera": { "enable": false },
+  "mid360": { "enable": false },
+  "ads1115": { "enable": false },
+  "sim": {
+    "lidar": true,
+    "imu": true,
+    "camera": true,
+    "adc": true
+  }
+}

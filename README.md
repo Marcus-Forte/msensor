@@ -17,7 +17,28 @@ Publisher executables (e.g. `sensor_publisher`, `sim_publisher`) instantiate con
 
 `sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/usr/local/etc/publisher_config.json` (the installed template is `config/publisher_config.json`), or you can pass a different file path as the only argument.
 
-The config uses per-sensor objects such as `rplidar.enable`, `rplidar.device`, `camera.pipeline`, and `mid360.config`. `mid360.accumulate_scan_count` controls how many point-cloud packets are combined into each scan and is printed when the Mid360 driver is enabled.
+The config uses per-sensor objects; every key is optional. `sensor_publisher` builds the sensors with `msensor::makeSensors()` (`msensor/factory/sensor_factory.hh`), which throws on fatal problems (e.g. an enabled Mid360 without an existing config file, or a missing I2C bus) and makes the process print the message and exit with status 1.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `rplidar.enable`, `rplidar.device` | `true`, `/dev/ttyUSB0` | RPLidar; a missing device only warns |
+| `mid360.enable`, `mid360.config` | `false`, none | Mid360 (also provides the IMU); a relative `config` is resolved against the config file's directory |
+| `mid360.accumulate_scan_count` | `100` | Point-cloud packets combined into each scan |
+| `mid360.mode` | `"normal"` | `"normal"` or `"power_save"` (power save sets no scan pattern) |
+| `mid360.scan_pattern` | `"non_repetitive"` | `"non_repetitive"`, `"repetitive"` or `"low_frame_rate"` |
+| `icm20948.enable` | `false` | Skipped when the Mid360 supplies the IMU |
+| `icm20948.i2c_bus` | the `ads1115.i2c_bus` value | I2C bus index |
+| `ads1115.enable`, `ads1115.i2c_bus` | `false`, `1` | ADS1115 on I2C |
+| `ads1115.gain` | `6.144` | Full-scale volts: 6.144, 4.096, 2.048, 1.024, 0.512, 0.256 |
+| `ads1115.data_rate` | `8` | Samples per second: 8, 16, 32, 64, 128, 250, 475, 860 |
+| `ads1115.channel` | `0` | Single-ended input, 0..3 |
+| `ads1115.external_gain` | `(10+5.1)/5.1` | Voltage divider factor, positive |
+| `camera.enable`, `camera.pipeline` | `true`, libcamera pipeline | OpenCV GStreamer camera |
+| `camera.encoding` | `"raw"` | `"raw"` or `"jpeg"` (pipeline already delivers JPEG; passed through) |
+| `camera.jpeg_quality` | `85` | 0..100, used when raw frames are JPEG-encoded |
+| `sim.lidar`, `sim.imu`, `sim.camera`, `sim.adc` | `false` | Use the simulated driver instead of the hardware one of the same kind |
+
+The older `use_sensors.*`, `i2c_bus`, `lidar_device` and `camera_pipeline` keys are still accepted. `config/sim_config.json` enables the four simulators and disables the hardware, for local runs without devices: `sensor_publisher config/sim_config.json`.
 
 ### C++ Remote Client
 

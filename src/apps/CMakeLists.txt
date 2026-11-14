@@ -2,7 +2,7 @@
 
 # Sensor simulator
 add_executable(sim_publisher sim_publisher.cc)
-target_link_libraries(sim_publisher msensor::msensor msensor::sim_lidar msensor::sim_imu msensor::sim_camera msensor::sim_adc)
+target_link_libraries(sim_publisher msensor::msensor msensor::sensor_factory msensor::config)
 
 # Publishers
 add_executable(icm20948_publisher icm20948_publisher.cc)
@@ -21,7 +21,7 @@ add_executable(camera_publisher camera_publisher.cc)
 target_link_libraries(camera_publisher msensor::opencv_camera msensor::msensor)
 
 add_executable(sensor_publisher sensor_publisher.cc)
-target_link_libraries(sensor_publisher msensor::ads1115 msensor::rp_lidar msensor::icm20948 msensor::msensor msensor::opencv_camera msensor::mid360 msensor::config)
+target_link_libraries(sensor_publisher msensor::msensor msensor::sensor_factory msensor::config)
 
 add_executable(remote_recorder remote_recorder.cc)
 target_link_libraries(remote_recorder msensor::msensor)
