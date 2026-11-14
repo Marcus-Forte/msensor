@@ -1,11 +1,10 @@
 #pragma once
 
 #include <random>
-#include <stop_token>
-#include <thread>
 #include <vector>
 
 #include "msensor/interface/CallbackSlot.hh"
+#include "msensor/interface/SamplingThread.hh"
 #include "msensor/interface/ILidar.hh"
 
 namespace msensor {
@@ -28,7 +27,6 @@ public:
   void setScanCallback(ScanCallback callback) override;
 
 private:
-  void run(std::stop_token st);
   Scan3DI makeScan();
   static std::vector<Point3I> makeSteadyPoints();
 
@@ -37,7 +35,7 @@ private:
   std::vector<Point3I> steady_points_; // filled once when steady_
   uint32_t sequence_number_ = 0;
   CallbackSlot<Scan3DI> callback_;
-  std::jthread thread_; // last: joined before the members above are destroyed
+  SamplingThread sampler_; // last: joined before the members above are destroyed
 };
 
 } // namespace msensor

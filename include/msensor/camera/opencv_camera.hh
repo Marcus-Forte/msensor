@@ -1,10 +1,9 @@
 #pragma once
 
-#include <stop_token>
 #include <string>
-#include <thread>
 
 #include "msensor/interface/CallbackSlot.hh"
+#include "msensor/interface/SamplingThread.hh"
 #include "msensor/interface/ICamera.hh"
 #include <opencv2/videoio.hpp>
 
@@ -74,14 +73,12 @@ public:
 private:
   /// Capture a single frame. Returns false on error or if not opened.
   bool capture(CameraFrame &frame);
-  /// Capture loop; runs on the capture thread.
-  void run(std::stop_token st);
 
   const CameraFrameEncoding encoding_;
   cv::VideoCapture m_capture; ///< OpenCV video capture object.
   uint32_t sequence_number_ = 0; ///< Capture thread only.
   CallbackSlot<CameraFrame> callback_;
-  std::jthread thread_; // last: joined before the members above are destroyed
+  SamplingThread sampler_; // last: joined before the members above are destroyed
 };
 
 } // namespace msensor

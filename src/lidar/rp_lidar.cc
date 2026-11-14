@@ -1,6 +1,7 @@
 #include "msensor/lidar/rp_lidar.hh"
 #include <cmath>
 #include <chrono>
+#include <filesystem>
 #include <format>
 #include <iostream>
 #include <numbers>
@@ -13,6 +14,7 @@ namespace msensor {
 
 namespace {
 constexpr uint32_t g_baudRate = 115200;
+constexpr auto kNoScanBackoff = std::chrono::milliseconds(10);
 
 Scan3DI toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes,
                  int count, uint32_t sequence_number) {
@@ -37,27 +39,54 @@ Scan3DI toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes,
 }
 } // namespace
 
-RPLidar::RPLidar(const std::string &serial_port) {
-
-  drv_ = *sl::createLidarDriver();
-
-  if (!drv_) {
-    fprintf(stderr, "insufficent memory, exit\n");
-    exit(-2);
+RPLidar::RPLidar(const std::string &serial_port) : serial_port_(serial_port) {
+  auto drv = sl::createLidarDriver();
+  if (!drv || !*drv) {
+    throw std::runtime_error("Unable to create the RPLidar driver");
   }
+  drv_.reset(*drv);
 
-  channel_ = *sl::createSerialPortChannel(serial_port, g_baudRate);
+  auto channel = sl::createSerialPortChannel(serial_port, g_baudRate);
+  if (!channel || !*channel) {
+    // drv_ is released by its unique_ptr.
+    throw std::runtime_error("Unable to create the serial channel for " +
+                             serial_port);
+  }
+  channel_.reset(*channel);
 }
-RPLidar::~RPLidar() = default;
+
+RPLidar::~RPLidar() {
+  // The sampling thread uses the driver: join it first.
+  stopSampling();
+  if (drv_ && drv_->isConnected()) {
+    drv_->stop();
+    drv_->setMotorSpeed(0); // stops the motor
+    drv_->disconnect();
+  }
+  // The driver must go before the channel it was connected to.
+  drv_.reset();
+  channel_.reset();
+}
 
 void RPLidar::init() {
-
-  if (!SL_IS_OK((drv_)->connect(channel_))) {
+  // The SDK's connect() reports success even when the serial port could not be
+  // opened (a shadowed result variable in AsyncTransceiver::openChannelAndBind),
+  // and later calls then dereference a null channel. Reject a missing device
+  // up front, and treat a device that does not answer as a failed connection.
+  if (!std::filesystem::exists(serial_port_)) {
+    throw std::runtime_error("LiDAR device does not exist: " + serial_port_);
+  }
+  if (!SL_IS_OK(drv_->connect(channel_.get()))) {
     throw std::runtime_error("Unable to connect to LiDAR");
   }
   sl_lidar_response_device_info_t devinfo;
   auto op_result = drv_->getDeviceInfo(devinfo);
-  if (SL_IS_OK(op_result)) {
+  if (!SL_IS_OK(op_result)) {
+    drv_->disconnect();
+    throw std::runtime_error("LiDAR on " + serial_port_ +
+                             " did not answer the device info request");
+  }
+  {
     printf("SLAMTEC LIDAR S/N: ");
     for (int pos = 0; pos < 16; ++pos) {
       printf("%02X", devinfo.serialnum[pos]);
@@ -97,32 +126,21 @@ std::optional<Scan3DI> RPLidar::grabScan() {
 }
 
 void RPLidar::startSampling() {
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
+  sampler_.startFreeRunning([this]() -> std::chrono::nanoseconds {
+    if (auto scan = grabScan()) {
+      callback_.emit(std::move(*scan));
+      return std::chrono::nanoseconds::zero();
+    }
+    return kNoScanBackoff;
+  });
 }
 
 void RPLidar::stopSampling() {
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
+  sampler_.stop();
 }
 
 void RPLidar::setScanCallback(ScanCallback callback) {
   callback_.setCallback(std::move(callback));
-}
-
-void RPLidar::run(std::stop_token st) {
-  while (!st.stop_requested()) {
-    if (auto scan = grabScan()) {
-      callback_.emit(std::move(*scan));
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-  }
 }
 
 void RPLidar::setMotorRPM(unsigned int rpm) { drv_->setMotorSpeed(rpm); }

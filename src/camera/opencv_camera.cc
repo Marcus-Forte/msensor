@@ -8,6 +8,10 @@
 
 namespace msensor {
 
+namespace {
+constexpr auto kFailBackoff = std::chrono::milliseconds(100);
+}
+
 OpenCvCamera::OpenCvCamera(std::string &&pipeline, CameraFrameEncoding encoding)
     : encoding_(encoding) {
   m_capture.open(pipeline, cv::CAP_GSTREAMER);
@@ -24,41 +28,28 @@ OpenCvCamera::~OpenCvCamera() {
 }
 
 void OpenCvCamera::startSampling() {
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
-}
-
-void OpenCvCamera::stopSampling() {
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
-}
-
-void OpenCvCamera::setFrameCallback(FrameCallback callback) {
-  callback_.setCallback(std::move(callback));
-}
-
-void OpenCvCamera::run(std::stop_token st) {
-  while (!st.stop_requested()) {
+  sampler_.startFreeRunning([this]() -> std::chrono::nanoseconds {
     if (!callback_.hasCallback()) {
       // No consumer: keep the pipeline draining, but do not decode, copy or
       // allocate, and do not consume a sequence number.
-      if (!isOpened() || !m_capture.grab()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-      continue;
+      const bool ok = isOpened() && m_capture.grab();
+      return ok ? std::chrono::nanoseconds::zero() : kFailBackoff;
     }
     CameraFrame frame;
     if (capture(frame)) {
       callback_.emit(std::move(frame));
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      return std::chrono::nanoseconds::zero();
     }
-  }
+    return kFailBackoff;
+  });
+}
+
+void OpenCvCamera::stopSampling() {
+  sampler_.stop();
+}
+
+void OpenCvCamera::setFrameCallback(FrameCallback callback) {
+  callback_.setCallback(std::move(callback));
 }
 
 bool OpenCvCamera::capture(CameraFrame &frame) {

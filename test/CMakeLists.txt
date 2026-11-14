@@ -26,6 +26,18 @@ add_executable(test_sim_drivers src/test_sim_drivers.cc)
 target_link_libraries(test_sim_drivers sim_camera sim_lidar sim_adc gtest_main gtest)
 gtest_discover_tests(test_sim_drivers)
 
+add_executable(test_sampling_thread src/test_sampling_thread.cc)
+target_link_libraries(test_sampling_thread ILidar gtest_main gtest)
+gtest_discover_tests(test_sampling_thread)
+
+add_executable(test_rp_lidar src/test_rp_lidar.cc)
+target_link_libraries(test_rp_lidar rp_lidar gtest_main gtest)
+gtest_discover_tests(test_rp_lidar)
+
+add_executable(test_shutdown_signal src/test_shutdown_signal.cc)
+target_link_libraries(test_shutdown_signal msensor::server gtest_main gtest)
+gtest_discover_tests(test_shutdown_signal)
+
 add_executable(draft draft.cc)
 target_link_libraries(draft scan_recorder)
 

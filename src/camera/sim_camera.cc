@@ -9,26 +9,7 @@ constexpr auto kPeriod = std::chrono::milliseconds(33); // ~30 FPS
 }
 
 void SimCamera::startSampling() {
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
-}
-
-void SimCamera::stopSampling() {
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
-}
-
-void SimCamera::setFrameCallback(FrameCallback callback) {
-  callback_.setCallback(std::move(callback));
-}
-
-void SimCamera::run(std::stop_token st) {
-  while (!st.stop_requested()) {
+  sampler_.startPeriodic(kPeriod, [this] {
     // No consumer: produce nothing, so sequence numbers stay unconsumed.
     if (callback_.hasCallback()) {
       CameraFrame frame;
@@ -36,8 +17,15 @@ void SimCamera::run(std::stop_token st) {
       frame.header = {timing::getNowNs(), sequence_number_++};
       callback_.emit(std::move(frame));
     }
-    std::this_thread::sleep_for(kPeriod);
-  }
+  });
+}
+
+void SimCamera::stopSampling() {
+  sampler_.stop();
+}
+
+void SimCamera::setFrameCallback(FrameCallback callback) {
+  callback_.setCallback(std::move(callback));
 }
 
 cv::Mat SimCamera::makeImage() {

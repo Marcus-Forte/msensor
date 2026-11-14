@@ -5,7 +5,6 @@
 #include <cstring>
 #include <getopt.h>
 #include <iostream>
-#include <optional>
 #include <thread>
 
 namespace {
@@ -19,21 +18,6 @@ void print_usage() {
             << std::endl;
 }
 
-std::optional<msensor::AdcChannel> channelFromIndex(int channel) {
-  using AdcChannel = msensor::AdcChannel;
-  switch (channel) {
-  case 0:
-    return AdcChannel::CHANNEL_0;
-  case 1:
-    return AdcChannel::CHANNEL_1;
-  case 2:
-    return AdcChannel::CHANNEL_2;
-  case 3:
-    return AdcChannel::CHANNEL_3;
-  default:
-    return std::nullopt;
-  }
-}
 } // namespace
 
 int main(int argc, char **argv) {
@@ -56,8 +40,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  const auto target_channel = channelFromIndex(channel);
-  if (!target_channel) {
+  if (channel < 0 || channel > 3) {
     std::cerr << "Invalid channel " << channel << ". Channel must be 0..3."
               << std::endl;
     return 1;
@@ -83,7 +66,7 @@ int main(int argc, char **argv) {
   while (true) {
     if (auto sample = adc->readSingleEnded()) {
       std::cout << "ADC ch" << channel << " = " << sample->voltage << " V"
-                << " @ " << sample->timestamp << std::endl;
+                << " @ " << sample->header.timestamp << std::endl;
 
       std::cout << "Vin = " << sample->voltage << std::endl;
 

@@ -18,8 +18,16 @@ void File::close() { file_.close(); }
 
 void File::write(const char *data, size_t size) {
   file_.write(data, static_cast<std::streamsize>(size));
+  if (!file_) {
+    throw std::runtime_error("Failed to write to file.");
+  }
 }
 
-std::ostream *File::ostream() { return &file_; }
+void File::flush() {
+  file_.flush();
+  if (!file_) {
+    throw std::runtime_error("Failed to flush file.");
+  }
+}
 
 } // namespace msensor

@@ -7,6 +7,7 @@
 #include "msensor/imu/sim_imu.hh"
 #include "msensor/lidar/sim_lidar.hh"
 #include "msensor_server.hh"
+#include "shutdown_signal.hh"
 
 void print_usage() { std::cout << "Usage: sim_publisher" << std::endl; }
 
@@ -25,6 +26,9 @@ int main(int argc, char **argv) {
   server.start();
 
   std::cout << "Publishing scan and Imu data" << std::endl;
-  // Serve until the process is terminated.
-  server.wait();
+  // Serve until SIGINT/SIGTERM, then shut down and return so the driver
+  // destructors run (the server is destroyed first).
+  msensor::waitForShutdownSignal();
+  server.stop();
+  return 0;
 }

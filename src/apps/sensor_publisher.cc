@@ -11,6 +11,7 @@
 #include "msensor/lidar/mid360.hh"
 #include "msensor/lidar/rp_lidar.hh"
 #include "msensor_server.hh"
+#include "shutdown_signal.hh"
 
 constexpr int DefaultI2cBus = 1;
 constexpr uint8_t DefaultADSAddress = 0x48;
@@ -129,6 +130,9 @@ int main(int argc, char **argv) {
 
   SensorsServer server(adc, camera, imu, lidar);
   server.start();
-  // Serve until the process is terminated.
-  server.wait();
+  // Serve until SIGINT/SIGTERM, then shut down and return so the driver
+  // destructors run (the server is destroyed first).
+  msensor::waitForShutdownSignal();
+  server.stop();
+  return 0;
 }

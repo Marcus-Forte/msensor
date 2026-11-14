@@ -10,20 +10,12 @@ grpc::ServerWriteReactor<sensors::CameraStreamReply> *
 CameraServiceImpl::getCameraFrame(
     grpc::CallbackServerContext * /*context*/,
     const sensors::CameraStreamRequest * /*request*/) {
-  if (!camera_) {
-    return new msensor::ErrorReactor<sensors::CameraStreamReply>(
-        {grpc::StatusCode::UNAVAILABLE, "Camera not available"});
-  }
-  if (in_use_.exchange(true)) {
-    return new msensor::ErrorReactor<sensors::CameraStreamReply>(
-        {grpc::StatusCode::RESOURCE_EXHAUSTED,
-         "Only one client per stream supported"});
-  }
-  return new msensor::SensorStreamReactor<msensor::CameraFrame,
-                                          sensors::CameraStreamReply>(
-      [this](auto callback) { camera_->setFrameCallback(std::move(callback)); },
+  return msensor::makeStreamReactor<msensor::CameraFrame,
+                                    sensors::CameraStreamReply>(
+      camera_, in_use_, "Camera not available",
+      &msensor::ICamera::setFrameCallback,
       [](const msensor::CameraFrame &frame, sensors::CameraStreamReply &out) {
         toProtobuf(frame, out);
       },
-      in_use_, "camera");
+      "camera");
 }

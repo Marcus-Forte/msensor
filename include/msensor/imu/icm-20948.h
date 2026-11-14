@@ -1,9 +1,8 @@
 #pragma once
 
-#include <stop_token>
-#include <thread>
 
 #include "msensor/interface/CallbackSlot.hh"
+#include "msensor/interface/SamplingThread.hh"
 #include "msensor/interface/IImu.hh"
 #include <stdint.h>
 
@@ -48,8 +47,6 @@ private:
   /// Read one sample from the device.
   IMUData readSample();
 
-  /// Sampling loop; runs on the sampling thread.
-  void run(std::stop_token st);
 
   xyz_data_ get_acc_data() const;
   xyz_data_ get_gyro_data() const;
@@ -120,7 +117,7 @@ private:
 
   uint32_t sequence_number_ = 0;
   CallbackSlot<IMUData> callback_;
-  std::jthread thread_; // last: joined before the members above are destroyed
+  SamplingThread sampler_; // last: joined before the members above are destroyed
 };
 
 }

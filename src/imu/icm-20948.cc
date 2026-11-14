@@ -17,7 +17,7 @@ extern "C" {
 namespace msensor {
 
 namespace {
-constexpr auto kSamplePeriod = std::chrono::milliseconds(10); // 100 Hz.
+constexpr auto kPeriod = std::chrono::milliseconds(10); // 100 Hz.
 }
 
 inline uint8_t ICM20948::write_(uint8_t reg_address, uint8_t data) const {
@@ -69,32 +69,20 @@ ICM20948::~ICM20948() {
 }
 
 void ICM20948::startSampling() {
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
-}
-
-void ICM20948::stopSampling() {
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
-}
-
-void ICM20948::setImuCallback(ImuCallback callback) {
-  callback_.setCallback(std::move(callback));
-}
-
-void ICM20948::run(std::stop_token st) {
-  while (!st.stop_requested()) {
+  sampler_.startPeriodic(kPeriod, [this] {
     // No consumer: skip the I2C transaction (and the sequence number).
     if (callback_.hasCallback()) {
       callback_.emit(readSample());
     }
-    std::this_thread::sleep_for(kSamplePeriod);
-  }
+  });
+}
+
+void ICM20948::stopSampling() {
+  sampler_.stop();
+}
+
+void ICM20948::setImuCallback(ImuCallback callback) {
+  callback_.setCallback(std::move(callback));
 }
 
 /// \todo allow configuration.

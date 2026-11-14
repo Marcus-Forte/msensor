@@ -5,14 +5,36 @@ performing acquisition depends on the driver:
 
 | Driver | Acquisition thread |
 | --- | --- |
-| `RPLidar` | Own `std::jthread`, started by `startSampling()`; repeatedly reads scans and emits its callback. |
-| `ICM20948` | Own `std::jthread`, started by `startSampling()`; repeatedly reads samples and emits its callback. |
-| `OpenCvCamera` | Own `std::jthread`, started by `startSampling()`; repeatedly captures frames and emits its callback. |
-| `SimLidar`, `SimImu`, `SimCamera` | Each simulator starts its own `std::jthread` in `startSampling()` and emits generated data from it. |
+| `RPLidar` | Own `SamplingThread` (`std::jthread`), started by `startSampling()`; repeatedly reads scans and emits its callback. |
+| `ICM20948` | Own `SamplingThread` (`std::jthread`), started by `startSampling()`; repeatedly reads samples and emits its callback. |
+| `OpenCvCamera` | Own `SamplingThread` (`std::jthread`), started by `startSampling()`; repeatedly captures frames and emits its callback. |
+| `SimLidar`, `SimImu`, `SimCamera` | Each simulator starts its own `SamplingThread` (`std::jthread`) in `startSampling()` and emits generated data from it. |
 | `Mid360` | Starts the Livox SDK with `LivoxLidarSdkStart()` and receives data through SDK callbacks; msensor does not create a sampling `std::jthread` for it. |
 | `ADS1115` | Pull-based: `readSingleEnded()` performs a read when called; the driver does not start a background sampling thread. |
 | `RecordingSensorDriver` | Own `std::jthread`, started by `startSampling()`; parses the recording, paces entries by their timestamps and emits them. |
 | `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages and emits them. |
+
+`RPLidar`, `ICM20948`, `OpenCvCamera`, `SimLidar`, `SimImu` and `SimCamera`
+do not manage their thread themselves: each owns a `msensor::SamplingThread`
+(`include/msensor/interface/SamplingThread.hh`), declared as its last data
+member so it is joined before the members its loop uses are destroyed. It has
+two modes:
+
+- Periodic (`startPeriodic(period, tick)`; the simulators and `ICM20948`): `tick`
+  runs on a fixed cadence, tick n due at `start + n * period` (the first one
+  immediately), so the work time does not stretch the period. If a tick overruns
+  its slot, the missed slots are skipped and the cadence continues on the
+  original grid; it does not fire a burst to catch up. Periods: `SimLidar`
+  25 ms (40 Hz), `SimImu` 20 ms (50 Hz), `SimCamera` 33 ms, `ICM20948` 10 ms.
+- Free-running (`startFreeRunning(step)`; `RPLidar`, `OpenCvCamera`): the work is
+  itself a blocking read, so `step` is called back to back and returns how long
+  to back off before the next call (zero for none). `RPLidar` backs off 10 ms
+  when no scan was grabbed, `OpenCvCamera` 100 ms when capture or grab fails.
+
+All waits are stop-aware, so `stopSampling()` returns promptly even with a long
+period or back-off. Starting while running and stopping while not running are
+no-ops, and a stopped sampler can be started again. Start and stop are meant to
+be called from one controlling thread.
 
 For the drivers that own a `std::jthread`, `stopSampling()` requests stop and
 joins the thread. This keeps their continuous polling or capture loops off the

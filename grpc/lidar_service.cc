@@ -9,20 +9,10 @@ LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
 grpc::ServerWriteReactor<sensors::PointCloud3> *LidarServiceImpl::getLidarScan(
     grpc::CallbackServerContext * /*context*/,
     const sensors::LidarStreamRequest * /*request*/) {
-  if (!lidar_) {
-    return new msensor::ErrorReactor<sensors::PointCloud3>(
-        {grpc::StatusCode::UNAVAILABLE, "Lidar not available"});
-  }
-  if (in_use_.exchange(true)) {
-    return new msensor::ErrorReactor<sensors::PointCloud3>(
-        {grpc::StatusCode::RESOURCE_EXHAUSTED,
-         "Only one client per stream supported"});
-  }
-  return new msensor::SensorStreamReactor<msensor::Scan3DI,
-                                          sensors::PointCloud3>(
-      [this](auto callback) { lidar_->setScanCallback(std::move(callback)); },
+  return msensor::makeStreamReactor<msensor::Scan3DI, sensors::PointCloud3>(
+      lidar_, in_use_, "Lidar not available", &msensor::ILidar::setScanCallback,
       [](const msensor::Scan3DI &scan, sensors::PointCloud3 &out) {
         toProtobuf(scan, out);
       },
-      in_use_, "Lidar scan");
+      "Lidar scan");
 }

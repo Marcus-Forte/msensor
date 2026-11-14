@@ -58,13 +58,8 @@ void ScanRecorder::append(const sensors::RecordingEntry &entry) {
   // Write size of data
   record_file_->write(reinterpret_cast<const char *>(&bytes), sizeof(bytes));
   // Write the sensor data
-  std::ostream *out = record_file_->ostream();
-  out->write(reinterpret_cast<const char *>(buffer_.data()),
-             static_cast<std::streamsize>(bytes));
-  out->flush();
-  if (!*out) {
-    throw std::runtime_error("Failed to write recording entry.");
-  }
+  record_file_->write(reinterpret_cast<const char *>(buffer_.data()), bytes);
+  record_file_->flush();
 }
 
 void ScanRecorder::stop() {

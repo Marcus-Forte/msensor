@@ -11,29 +11,17 @@ constexpr auto kPeriod = std::chrono::milliseconds(20); // 50 Hz.
 SimImu::SimImu() : gen_(std::random_device{}()) {}
 
 void SimImu::startSampling() {
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
+  sampler_.startPeriodic(kPeriod, [this] {
+    callback_.emit(makeSample());
+  });
 }
 
 void SimImu::stopSampling() {
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
+  sampler_.stop();
 }
 
 void SimImu::setImuCallback(ImuCallback callback) {
   callback_.setCallback(std::move(callback));
-}
-
-void SimImu::run(std::stop_token st) {
-  while (!st.stop_requested()) {
-    callback_.emit(makeSample());
-    std::this_thread::sleep_for(kPeriod);
-  }
 }
 
 IMUData SimImu::makeSample() {

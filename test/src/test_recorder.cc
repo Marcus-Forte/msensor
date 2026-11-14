@@ -37,13 +37,39 @@ TEST_F(TestRecorder, start) {
   recorder_->start();
 }
 
+namespace {
+/// Collects what a recorder writes: each write() call and the concatenation.
+struct Captured {
+  std::vector<std::string> writes;
+  std::string all;
+  int flushes = 0;
+};
+
+void captureWrites(IFileMock &mock, Captured &out) {
+  EXPECT_CALL(mock, write(_, _))
+      .WillRepeatedly([&out](const char *data, size_t size) {
+        out.writes.emplace_back(data, size);
+        out.all.append(data, size);
+      });
+  EXPECT_CALL(mock, flush()).WillRepeatedly([&out] { ++out.flushes; });
+}
+
+/// The entry is a native-endian uint64 byte count, then that many bytes.
+void expectFramedEntry(const Captured &c, size_t payload_size) {
+  ASSERT_EQ(c.writes.size(), 2U);
+  ASSERT_EQ(c.writes[0].size(), sizeof(uint64_t));
+  uint64_t prefix;
+  std::memcpy(&prefix, c.writes[0].data(), sizeof(prefix));
+  EXPECT_EQ(prefix, payload_size);
+  EXPECT_EQ(c.writes[1].size(), payload_size);
+  EXPECT_EQ(c.flushes, 1);
+}
+} // namespace
+
 TEST_F(TestRecorder, record_scan) {
   EXPECT_CALL(*file_mock_, open(testing::_));
-  EXPECT_CALL(*file_mock_, write(_, _));
-
-  // redirect to string stream
-  std::stringstream stream;
-  EXPECT_CALL(*file_mock_, ostream()).WillRepeatedly(Return(&stream));
+  Captured captured;
+  captureWrites(*file_mock_, captured);
   auto scan = Scan3DI{};
   // Add points. Zeros may not be serialized.
   scan.points.emplace_back(1, 2, 3);
@@ -53,16 +79,17 @@ TEST_F(TestRecorder, record_scan) {
   recorder_->start();
   recorder_->record(scan);
 
-  EXPECT_EQ(stream.str().size(), 40);
+  expectFramedEntry(captured, 40);
+  sensors::RecordingEntry entry;
+  ASSERT_TRUE(entry.ParseFromString(captured.writes[1]));
+  ASSERT_TRUE(entry.has_scan());
+  EXPECT_EQ(entry.scan().header().timestamp(), 10U);
 }
 
 TEST_F(TestRecorder, record_imu) {
   EXPECT_CALL(*file_mock_, open(testing::_));
-  EXPECT_CALL(*file_mock_, write(_, _));
-
-  // redirect to string stream
-  std::stringstream stream;
-  EXPECT_CALL(*file_mock_, ostream()).WillRepeatedly(Return(&stream));
+  Captured captured;
+  captureWrites(*file_mock_, captured);
   const auto imu = IMUData{Header{10, 0},
                            1,
                            2,
@@ -74,10 +101,32 @@ TEST_F(TestRecorder, record_imu) {
   recorder_->start();
   recorder_->record(imu);
 
-  EXPECT_EQ(stream.str().size(), 36); // 1 imu,
+  expectFramedEntry(captured, 36); // 1 imu
+  sensors::RecordingEntry entry;
+  ASSERT_TRUE(entry.ParseFromString(captured.writes[1]));
+  ASSERT_TRUE(entry.has_imu());
+}
+
+TEST_F(TestRecorder, write_failure_surfaces_from_record) {
+  EXPECT_CALL(*file_mock_, open(testing::_));
+  EXPECT_CALL(*file_mock_, write(_, _))
+      .WillOnce(Throw(std::runtime_error("disk full")));
+  recorder_->start();
+  EXPECT_THROW(recorder_->record(IMUData{Header{10, 0}, 1, 2, 3, 4, 5, 6}),
+               std::runtime_error);
+}
+
+TEST_F(TestRecorder, flush_failure_surfaces_from_record) {
+  EXPECT_CALL(*file_mock_, open(testing::_));
+  EXPECT_CALL(*file_mock_, write(_, _)).Times(2);
+  EXPECT_CALL(*file_mock_, flush())
+      .WillOnce(Throw(std::runtime_error("disk full")));
+  recorder_->start();
+  EXPECT_THROW(recorder_->record(IMUData{Header{10, 0}, 1, 2, 3, 4, 5, 6}),
+               std::runtime_error);
 }
 TEST_F(TestRecorder, records_nothing_before_start_or_after_stop) {
-  // StrictMock: any write()/ostream() call would fail the test.
+  // StrictMock: any write()/flush() call would fail the test.
   recorder_->record(Scan3DI{});
   recorder_->record(IMUData{});
 
@@ -181,6 +230,24 @@ TEST(FileTest, WriteHonoursSize) {
   std::ifstream in(path, std::ios::binary);
   const std::string content((std::istreambuf_iterator<char>(in)), {});
   EXPECT_EQ(content, "abcXY");
+}
+
+TEST(FileTest, WriteAndFlushToFullDeviceThrow) {
+  if (!std::filesystem::exists("/dev/full")) {
+    GTEST_SKIP() << "/dev/full not available";
+  }
+  File file;
+  file.open("/dev/full");
+  // Buffered: the failure may show on write() or only on flush().
+  EXPECT_THROW(
+      {
+        file.write("x", 1);
+        file.flush();
+      },
+      std::runtime_error);
+  // The stream stays failed.
+  EXPECT_THROW(file.write("x", 1), std::runtime_error);
+  EXPECT_THROW(file.flush(), std::runtime_error);
 }
 
 TEST(FileTest, OpenFailureThrows) {

@@ -23,33 +23,21 @@ void SimLidar::init() { std::cout << "init" << std::endl; }
 
 void SimLidar::startSampling() {
   std::cout << "startSampling" << std::endl;
-  if (thread_.joinable()) {
-    return;
-  }
-  thread_ = std::jthread([this](std::stop_token st) { run(st); });
-}
-
-void SimLidar::stopSampling() {
-  std::cout << "stopSampling" << std::endl;
-  if (!thread_.joinable()) {
-    return;
-  }
-  thread_.request_stop();
-  thread_.join();
-}
-
-void SimLidar::setScanCallback(ScanCallback callback) {
-  callback_.setCallback(std::move(callback));
-}
-
-void SimLidar::run(std::stop_token st) {
-  while (!st.stop_requested()) {
+  sampler_.startPeriodic(kPeriod, [this] {
     // No consumer: produce nothing, so sequence numbers stay unconsumed.
     if (callback_.hasCallback()) {
       callback_.emit(makeScan());
     }
-    std::this_thread::sleep_for(kPeriod);
-  }
+  });
+}
+
+void SimLidar::stopSampling() {
+  std::cout << "stopSampling" << std::endl;
+  sampler_.stop();
+}
+
+void SimLidar::setScanCallback(ScanCallback callback) {
+  callback_.setCallback(std::move(callback));
 }
 
 std::vector<Point3I> SimLidar::makeSteadyPoints() {

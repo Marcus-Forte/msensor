@@ -9,7 +9,7 @@ std::optional<AdcSample> SimAdc::readSingleEnded() const {
   float voltage =
       static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * 3.3f;
   const uint64_t now = timing::getNowNs();
-  return AdcSample{Header{now, sequence_number_++}, voltage, now};
+  return AdcSample{Header{now, sequence_number_++}, voltage};
 }
 
 } // namespace msensor

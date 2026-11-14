@@ -98,7 +98,7 @@ std::optional<AdcSample> ADS1115::readSingleEnded() const {
   const auto raw = readConversion();
   const uint64_t now = timing::getNowNs();
   return AdcSample{Header{now, sequence_number_++},
-                   convertRawToVoltage(raw) * external_gain_, now};
+                   convertRawToVoltage(raw) * external_gain_};
 }
 
 bool ADS1115::init(Gain gain, DataRate rate, Channel channel,

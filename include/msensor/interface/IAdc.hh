@@ -8,22 +8,11 @@
 namespace msensor {
 
 /**
- * @brief Supported ADC single-ended channels.
- */
-enum class AdcChannel : uint8_t {
-  CHANNEL_0,
-  CHANNEL_1,
-  CHANNEL_2,
-  CHANNEL_3,
-};
-
-/**
  * @brief ADC measurement sample.
  */
 struct AdcSample {
-  Header header; ///< Sample header containing timestamp and sequence number.
+  Header header; ///< Acquisition time (ns) and sequence number.
   float voltage; ///< Measured voltage in volts.
-  uint64_t timestamp; ///< Acquisition time in nanoseconds.
 };
 
 /**

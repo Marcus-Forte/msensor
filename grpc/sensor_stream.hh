@@ -5,6 +5,7 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -131,5 +132,38 @@ public:
   }
   void OnDone() override { delete this; }
 };
+
+/**
+ * @brief Creates the reactor for a streaming RPC over a single-client sensor.
+ *
+ * Returns an ErrorReactor with UNAVAILABLE (`unavailable_message`) if there is
+ * no driver, with RESOURCE_EXHAUSTED if a stream is already active
+ * (`in_use`), and otherwise a SensorStreamReactor that is released by gRPC.
+ *
+ * @param set_callback pointer to the driver's `setXCallback` member
+ * @param convert `void(const Sample &, Response &)`
+ * @param name stream name used in the log lines
+ */
+template <class Sample, class Response, class Driver, class Convert>
+grpc::ServerWriteReactor<Response> *makeStreamReactor(
+    const std::shared_ptr<Driver> &driver, std::atomic<bool> &in_use,
+    std::string unavailable_message,
+    void (Driver::*set_callback)(std::function<void(Sample)>), Convert convert,
+    std::string name) {
+  if (!driver) {
+    return new ErrorReactor<Response>(
+        {grpc::StatusCode::UNAVAILABLE, std::move(unavailable_message)});
+  }
+  if (in_use.exchange(true)) {
+    return new ErrorReactor<Response>({grpc::StatusCode::RESOURCE_EXHAUSTED,
+                                       "Only one client per stream supported"});
+  }
+  Driver *raw = driver.get();
+  return new SensorStreamReactor<Sample, Response>(
+      [raw, set_callback](auto callback) {
+        (raw->*set_callback)(std::move(callback));
+      },
+      std::move(convert), in_use, std::move(name));
+}
 
 } // namespace msensor

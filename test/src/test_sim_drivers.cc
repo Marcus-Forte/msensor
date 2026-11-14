@@ -161,7 +161,6 @@ TEST(SimAdc, SequenceNumbersArePerInstanceAndUniqueAcrossThreads) {
         const auto sample = b.readSingleEnded();
         ASSERT_TRUE(sample.has_value());
         EXPECT_GT(sample->header.timestamp, 0U);
-        EXPECT_EQ(sample->timestamp, sample->header.timestamp);
         seen[static_cast<size_t>(t)].push_back(sample->header.sequence_number);
       }
     });
