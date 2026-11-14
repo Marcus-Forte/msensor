@@ -5,16 +5,14 @@ set -euo pipefail
 print_usage() {
   cat <<'EOF'
 Available apps (run as CMD/args):
-  rplidar_publisher <usb_device>
-  mid360_publisher
+  sensor_publisher [config.json]
   sim_publisher
-  icm20948_publisher
-  ads1115_publisher
-  camera_publisher
-  sensor_publisher
+  remote_recorder <host:port> [output.pbscan]
+  playback_publisher -f <file> [-s <speed>] [-p <port>] [--autoplay]
+  scan_checker -f <file>
 
 Example:
-  docker run --rm <image> rplidar_publisher /dev/ttyUSB0
+  docker run --rm <image> sensor_publisher /usr/local/etc/publisher_config.json
 EOF
 }
 

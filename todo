@@ -1,5 +1,3 @@
-- cmake Library naming
-- namespace for parent projects
 - separate thread for sensor recording?
 - Support more subscribers at once
 - Optimize camera wire transmission (encoding)
@@ -9,5 +7,4 @@
  - Can be done in the gRPC service.
 
 - IMU via gRPC consumes entire CPU.
-- Cleanup individual sensor publishers (e.g. sim_publisher) and merge into one executable with config file input
 - Add sequence number to sensor data for better debugging and synchronization

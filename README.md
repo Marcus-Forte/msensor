@@ -8,12 +8,12 @@ See `docs/arch.puml` for a PlantUML diagram.
 
 ### Interfaces
 
-Inherit the abstract interfaces in `include/interface/` and implement your own driver.  
+Inherit the abstract interfaces in `include/msensor/interface/` and implement your own driver.  
 See `src/<sensor_type>/` for examples.
 
 ### Server
 
-Publisher executables (e.g. `sensor_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**. `SensorsServer::start()` throws `std::runtime_error` if the address cannot be bound; `wait()` blocks until `stop()`.
+`sensor_publisher` (config-driven, see below) and `sim_publisher` (all four simulated drivers) build their drivers with `msensor::makeSensors()` and serve them through `msensor::SensorsServer`, which is constructed from a `msensor::Sensors` struct and optional `ServerOptions` and exposes the four gRPC services on port **50051**. Both stop cleanly on SIGINT/SIGTERM. `SensorsServer::start()` throws `std::runtime_error` if the address cannot be bound; `wait()` blocks until `stop()`.
 
 `sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/usr/local/etc/publisher_config.json` (the installed template is `config/publisher_config.json`), or you can pass a different file path as the only argument.
 
@@ -67,7 +67,7 @@ A `deployment/Dockerfile` is provided to offer small footprint images that allow
 
 Make sure the hardware is correctly mapped to the container (e.g `--device /dev/i2c-1`, `--device /dev/ttyUSB*`,  `--network=host`, ...), or use `docker run -v /dev:/dev -v /run/udev:/run/udev --privileged` to allow complete device access.
 
-A `docker-compose.yml` is provided in `docker` folder illustrating how to compose and deploy this app.
+A `docker-compose.yml` is provided in the `deployment/` folder next to the Dockerfile illustrating how to compose and deploy this app.
 
 ## Recorder
 
