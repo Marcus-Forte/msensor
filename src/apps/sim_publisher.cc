@@ -22,7 +22,10 @@ int main(int argc, char **argv) {
   sim_imu->startSampling();
   sim_camera->startSampling();
 
-  SensorsServer server(sim_adc, sim_camera, sim_imu, sim_lidar);
+  msensor::SensorsServer server({.adc = sim_adc,
+                                 .camera = sim_camera,
+                                 .imu = sim_imu,
+                                 .lidar = sim_lidar});
   server.start();
 
   std::cout << "Publishing scan and Imu data" << std::endl;

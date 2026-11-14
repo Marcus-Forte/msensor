@@ -3,6 +3,8 @@
 #include "adc.grpc.pb.h"
 #include "msensor/interface/IAdc.hh"
 
+namespace msensor {
+
 /**
  * @brief Implements the ADC gRPC service.
  */
@@ -17,3 +19,11 @@ public:
 private:
   std::shared_ptr<msensor::IAdc> adc_;
 };
+
+} // namespace msensor
+
+#ifndef MSENSOR_NO_LEGACY_NAMES
+// Legacy global names, for downstream code. Define MSENSOR_NO_LEGACY_NAMES to
+// drop them.
+using msensor::AdcServiceImpl;
+#endif

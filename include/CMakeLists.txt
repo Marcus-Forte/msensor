@@ -1,31 +1,24 @@
-# Interface library definitions
+# Interface libraries.
+#
+# One header-only target serves every sensor interface that does not need
+# OpenCV. The per-interface names (msensor::IFile, IConfig, IImu, ILidar, IAdc)
+# are aliases of it.
+add_library(msensor_interface INTERFACE)
+target_include_directories(msensor_interface INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(msensor_interface INTERFACE msensor::timing)
 
-add_library(IFile INTERFACE)
-target_include_directories(IFile INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(msensor::interface ALIAS msensor_interface)
+add_library(msensor::IFile ALIAS msensor_interface)
+add_library(msensor::IConfig ALIAS msensor_interface)
+add_library(msensor::IImu ALIAS msensor_interface)
+add_library(msensor::ILidar ALIAS msensor_interface)
+add_library(msensor::IAdc ALIAS msensor_interface)
 
-add_library(IConfig INTERFACE)
-target_include_directories(IConfig INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+# The camera interface carries OpenCV, so it stays separate.
+add_library(msensor_camera_interface INTERFACE)
+target_include_directories(msensor_camera_interface INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(msensor_camera_interface INTERFACE ${OpenCV_LIBS})
+target_include_directories(msensor_camera_interface INTERFACE ${OpenCV_INCLUDE_DIRS})
 
-add_library(IImu INTERFACE)
-target_include_directories(IImu INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(IImu INTERFACE timing)
-
-add_library(ILidar INTERFACE)
-target_include_directories(ILidar INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ILidar INTERFACE timing)
-
-add_library(IAdc INTERFACE)
-target_include_directories(IAdc INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_library(ICamera INTERFACE)
-target_include_directories(ICamera INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ICamera INTERFACE ${OpenCV_LIBS})
-target_include_directories(ICamera INTERFACE ${OpenCV_INCLUDE_DIRS})
-
-# Namespaced aliases for submodule consumers
-add_library(msensor::IFile ALIAS IFile)
-add_library(msensor::IConfig ALIAS IConfig)
-add_library(msensor::IImu ALIAS IImu)
-add_library(msensor::ILidar ALIAS ILidar)
-add_library(msensor::IAdc ALIAS IAdc)
-add_library(msensor::ICamera ALIAS ICamera)
+add_library(msensor::camera_interface ALIAS msensor_camera_interface)
+add_library(msensor::ICamera ALIAS msensor_camera_interface)

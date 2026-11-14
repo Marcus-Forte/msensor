@@ -1,4 +1,6 @@
+#include "camera.grpc.pb.h"
 #include "lidar.grpc.pb.h"
+#include "msensor/camera/sim_camera.hh"
 #include "msensor/imu/sim_imu.hh"
 #include "msensor/interface/CallbackSlot.hh"
 #include "msensor/lidar/sim_lidar.hh"
@@ -10,6 +12,7 @@
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -20,8 +23,9 @@ public:
   void SetUp() override {
     lidar = std::make_shared<msensor::SimLidar>(true);
     imu = std::make_shared<msensor::SimImu>();
-    server = std::make_shared<SensorsServer>(nullptr, nullptr, imu, lidar);
-    client = std::make_shared<SensorsRemoteClient>("localhost:50051");
+    server = std::make_shared<msensor::SensorsServer>(
+        msensor::Sensors{.imu = imu, .lidar = lidar});
+    client = std::make_shared<msensor::SensorsRemoteClient>("localhost:50051");
   }
 
   void TearDown() override {
@@ -34,8 +38,8 @@ public:
 protected:
   std::shared_ptr<msensor::SimLidar> lidar;
   std::shared_ptr<msensor::SimImu> imu;
-  std::shared_ptr<SensorsServer> server;
-  std::shared_ptr<SensorsRemoteClient> client;
+  std::shared_ptr<msensor::SensorsServer> server;
+  std::shared_ptr<msensor::SensorsRemoteClient> client;
 };
 
 TEST_F(TestClientServer, StreamsScansAndImuToClient) {
@@ -98,9 +102,9 @@ TEST_F(TestClientServer, SecondClientIsRejected) {
 }
 
 TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
-  auto empty_server = std::make_shared<SensorsServer>();
+  auto empty_server = std::make_shared<msensor::SensorsServer>(msensor::Sensors{});
   empty_server->start();
-  SensorsRemoteClient c("localhost:50051");
+  msensor::SensorsRemoteClient c("localhost:50051");
   c.start(); // streams end with UNAVAILABLE, client retries quietly
   std::this_thread::sleep_for(200ms);
   c.stop();
@@ -146,9 +150,9 @@ msensor::Scan3DI makeScan(uint32_t seq, size_t points) {
 TEST(ClientServerContent, ScansArriveBitExact) {
   const std::string address = "127.0.0.1:50071";
   auto feed = std::make_shared<FeedSensor>();
-  SensorsServer server(nullptr, nullptr, nullptr, feed, address);
+  msensor::SensorsServer server({.lidar = feed}, {.listen_address = address});
   server.start();
-  SensorsRemoteClient client(address);
+  msensor::SensorsRemoteClient client(address);
 
   std::mutex m;
   std::condition_variable cv;
@@ -187,7 +191,7 @@ TEST(ClientServerContent, ScansArriveBitExact) {
 }
 
 TEST(SensorsServerTest, WaitBlocksUntilStop) {
-  SensorsServer server(nullptr, nullptr, nullptr, nullptr, "127.0.0.1:50072");
+  msensor::SensorsServer server({}, {.listen_address = "127.0.0.1:50072"});
   server.start();
   std::atomic<bool> returned{false};
   std::thread waiter([&] {
@@ -202,8 +206,83 @@ TEST(SensorsServerTest, WaitBlocksUntilStop) {
 }
 
 TEST(SensorsServerTest, StartThrowsWhenTheAddressCannotBeBound) {
-  SensorsServer server(nullptr, nullptr, nullptr, nullptr,
-                       "203.0.113.1:50073"); // not a local address
+  msensor::SensorsServer server(
+      {}, {.listen_address = "203.0.113.1:50073"}); // not a local address
   EXPECT_THROW(server.start(), std::runtime_error);
   server.stop(); // still safe
+}
+
+TEST(SensorsServerTest, LegacyPositionalConstructorServesLikeTheSensorsOne) {
+  const std::string address = "127.0.0.1:50074";
+  auto lidar = std::make_shared<msensor::SimLidar>(true);
+  lidar->startSampling();
+  msensor::SensorsServer server(nullptr, nullptr, nullptr, lidar, address);
+  server.start();
+  msensor::SensorsRemoteClient client(address);
+
+  std::mutex m;
+  std::condition_variable cv;
+  bool got_scan = false;
+  client.setScanCallback([&](const msensor::Scan3DI &) {
+    std::lock_guard lock(m);
+    got_scan = true;
+    cv.notify_all();
+  });
+  client.start();
+  {
+    std::unique_lock lock(m);
+    EXPECT_TRUE(cv.wait_for(lock, 5s, [&] { return got_scan; }));
+  }
+  client.stop();
+  server.stop();
+  lidar->stopSampling();
+}
+
+TEST(SensorsServerTest, RejectsJpegQualityOutsideZeroToHundred) {
+  EXPECT_THROW(msensor::SensorsServer({}, {.camera_jpeg_quality = -1}),
+               std::invalid_argument);
+  EXPECT_THROW(msensor::SensorsServer({}, {.camera_jpeg_quality = 101}),
+               std::invalid_argument);
+  EXPECT_NO_THROW(msensor::SensorsServer({}, {.camera_jpeg_quality = 0}));
+  EXPECT_NO_THROW(msensor::SensorsServer({}, {.camera_jpeg_quality = 100}));
+}
+
+namespace {
+
+/// Serves a SimCamera at the given JPEG quality and returns the size of the
+/// first frame's image_data received over a real stream.
+size_t firstFrameBytes(const std::string &address, int quality) {
+  auto camera = std::make_shared<msensor::SimCamera>();
+  camera->startSampling();
+  msensor::SensorsServer server({.camera = camera},
+                                {.listen_address = address,
+                                 .camera_jpeg_quality = quality});
+  server.start();
+
+  auto stub = sensors::CameraService::NewStub(
+      grpc::CreateChannel(address, grpc::InsecureChannelCredentials()));
+  grpc::ClientContext context;
+  context.set_deadline(std::chrono::system_clock::now() + 10s);
+  sensors::CameraStreamRequest request;
+  auto reader = stub->getCameraFrame(&context, request);
+  sensors::CameraStreamReply reply;
+  size_t bytes = 0;
+  if (reader->Read(&reply)) {
+    bytes = reply.image_data().size();
+  }
+  context.TryCancel();
+  reader->Finish();
+  server.stop();
+  camera->stopSampling();
+  return bytes;
+}
+
+} // namespace
+
+TEST(SensorsServerTest, CameraJpegQualityShrinksEncodedFrames) {
+  const size_t low = firstFrameBytes("127.0.0.1:50075", 10);
+  const size_t high = firstFrameBytes("127.0.0.1:50076", 95);
+  EXPECT_GT(low, 0u);
+  EXPECT_GT(high, 0u);
+  EXPECT_LT(low, high);
 }

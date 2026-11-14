@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   lidar->setMotorRPM(360);
   lidar->startSampling();
 
-  SensorsServer server(nullptr, nullptr, nullptr, lidar);
+  msensor::SensorsServer server(nullptr, nullptr, nullptr, lidar);
   server.start();
   // Serve until the process is terminated.
   server.wait();

@@ -4,8 +4,10 @@
 #include <grpcpp/grpcpp.h>
 #include <mutex>
 
-#include "msensor/conversions/conversions.hh"
+#include "msensor/conversions/lidar_imu_conversions.hh"
 #include "sensors_remote_client.hh"
+
+namespace msensor {
 
 constexpr int g_connectionRecoverDelayMs = 1000;
 
@@ -136,3 +138,5 @@ void SensorsRemoteClient::stop() {
     imu_reader_thread_.join();
   }
 }
+
+} // namespace msensor

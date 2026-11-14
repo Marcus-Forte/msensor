@@ -188,12 +188,12 @@ Recording loadRecording(const std::filesystem::path &path) {
     const auto &entry = player.getLastEntry();
     if (entry.entry_case() == sensors::RecordingEntry::kScan) {
       rec.scan_msgs.push_back(entry.scan());
-      rec.scans.push_back(fromProtobuf(entry.scan()));
+      rec.scans.push_back(msensor::fromProtobuf(entry.scan()));
       rec.points += rec.scans.back().points.size();
       rec.order.push_back(true);
     } else if (entry.entry_case() == sensors::RecordingEntry::kImu) {
       rec.imu_msgs.push_back(entry.imu());
-      rec.imus.push_back(fromProtobuf(entry.imu()));
+      rec.imus.push_back(msensor::fromProtobuf(entry.imu()));
       rec.order.push_back(false);
     }
   }
@@ -275,7 +275,7 @@ PassResult scansToProto(const std::vector<msensor::Scan3DI> &scans,
   for (int k = 0; k < repeat; ++k) {
     for (const auto &scan : scans) {
       const auto t0 = Clock::now();
-      toProtobuf(scan, msg);
+      msensor::toProtobuf(scan, msg);
       r.seconds += Seconds(Clock::now() - t0).count();
       if (k == 0) {
         hashCloudMsg(hs, msg);
@@ -294,7 +294,7 @@ PassResult scansFromProto(const std::vector<sensors::PointCloud3> &msgs,
   for (int k = 0; k < repeat; ++k) {
     for (const auto &msg : msgs) {
       const auto t0 = Clock::now();
-      auto scan = fromProtobuf(msg);
+      auto scan = msensor::fromProtobuf(msg);
       r.seconds += Seconds(Clock::now() - t0).count();
       if (k == 0) {
         hashScan(hs, scan);
@@ -312,7 +312,7 @@ PassResult imusToProto(const std::vector<msensor::IMUData> &imus) {
   sensors::IMUData msg;
   const auto t0 = Clock::now();
   for (const auto &imu : imus) {
-    toProtobuf(imu, msg);
+    msensor::toProtobuf(imu, msg);
     hashImuMsg(hs, msg);
   }
   r.seconds = Seconds(Clock::now() - t0).count();
@@ -326,7 +326,7 @@ PassResult imusFromProto(const std::vector<sensors::IMUData> &msgs) {
   Hasher hs;
   const auto t0 = Clock::now();
   for (const auto &msg : msgs) {
-    hashImu(hs, fromProtobuf(msg));
+    hashImu(hs, msensor::fromProtobuf(msg));
   }
   r.seconds = Seconds(Clock::now() - t0).count();
   r.ops = msgs.size();
@@ -513,16 +513,17 @@ template <class T> struct Mailbox {
 
 struct GrpcRig {
   std::shared_ptr<FeedSensor> feed = std::make_shared<FeedSensor>();
-  std::unique_ptr<SensorsServer> server;
-  std::unique_ptr<SensorsRemoteClient> client;
+  std::unique_ptr<msensor::SensorsServer> server;
+  std::unique_ptr<msensor::SensorsRemoteClient> client;
   Mailbox<msensor::Scan3DI> scans;
   Mailbox<msensor::IMUData> imus;
 
   explicit GrpcRig(const std::string &address) {
-    server =
-        std::make_unique<SensorsServer>(nullptr, nullptr, feed, feed, address);
+    server = std::make_unique<msensor::SensorsServer>(
+        msensor::Sensors{.imu = feed, .lidar = feed},
+        msensor::ServerOptions{.listen_address = address});
     server->start();
-    client = std::make_unique<SensorsRemoteClient>(address);
+    client = std::make_unique<msensor::SensorsRemoteClient>(address);
     client->setScanCallback(
         [this](msensor::Scan3DI scan) { scans.put(std::move(scan)); });
     client->setImuCallback([this](msensor::IMUData imu) { imus.put(imu); });
@@ -636,7 +637,7 @@ PassResult cameraToProto(const msensor::CameraFrame &frame, int repeat) {
   sensors::CameraStreamReply msg;
   const auto t0 = Clock::now();
   for (int i = 0; i < repeat; ++i) {
-    toProtobuf(frame, msg);
+    msensor::toProtobuf(frame, msg);
     hs.bytes(msg.image_data().data(), msg.image_data().size());
     hs.word(msg.width());
     hs.word(msg.height());
@@ -708,7 +709,7 @@ int main(int argc, char **argv) {
     for (uint32_t seed = 1; seed <= 8; ++seed) {
       scans.push_back(makeSyntheticScan(points, seed));
       msgs.emplace_back();
-      toProtobuf(scans.back(), msgs.back());
+      msensor::toProtobuf(scans.back(), msgs.back());
     }
     const int repeat = static_cast<int>(std::max<size_t>(1, 400000 / points));
     const std::string suffix = "[synthetic " + std::to_string(points) + "]";

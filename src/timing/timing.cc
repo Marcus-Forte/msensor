@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-namespace timing {
+namespace msensor::timing {
 
 // Use strictly for absolute PTP timeline alignment (e.g., host-stamping frames)
 uint64_t getEpochTimeUs() {
@@ -28,4 +28,4 @@ uint64_t getNowNs() {
              std::chrono::steady_clock::now().time_since_epoch())
       .count();
 }
-} // namespace timing
+} // namespace msensor::timing

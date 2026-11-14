@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
   camera->startSampling();
 
-  SensorsServer server(nullptr, camera, nullptr, nullptr);
+  msensor::SensorsServer server(nullptr, camera, nullptr, nullptr);
   server.start();
   // Serve until the process is terminated.
   server.wait();

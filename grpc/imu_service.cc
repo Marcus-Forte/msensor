@@ -1,7 +1,9 @@
 #include "imu_service.hh"
-#include "msensor/conversions/conversions.hh"
+#include "msensor/conversions/lidar_imu_conversions.hh"
 #include "sensor_stream.hh"
 #include <utility>
+
+namespace msensor {
 
 ImuServiceImpl::ImuServiceImpl(std::shared_ptr<msensor::IImu> imu)
     : imu_(std::move(imu)) {}
@@ -16,3 +18,5 @@ grpc::ServerWriteReactor<sensors::IMUData> *ImuServiceImpl::getImuData(
       },
       "IMU data");
 }
+
+} // namespace msensor

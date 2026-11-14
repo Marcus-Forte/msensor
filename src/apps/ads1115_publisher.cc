@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
               << std::dec << std::endl;
   }
 
-  SensorsServer server(adc, nullptr, nullptr, nullptr);
+  msensor::SensorsServer server(adc, nullptr, nullptr, nullptr);
   server.start();
 
   while (true) {

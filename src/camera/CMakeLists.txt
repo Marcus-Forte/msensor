@@ -1,8 +1,10 @@
-add_library(opencv_camera
+add_library(msensor_opencv_camera
 opencv_camera.cc)
-target_link_libraries(opencv_camera ICamera timing)
+add_library(msensor::opencv_camera ALIAS msensor_opencv_camera)
+target_link_libraries(msensor_opencv_camera msensor::ICamera msensor::timing)
 
 
-add_library(sim_camera
+add_library(msensor_sim_camera
 sim_camera.cc)
-target_link_libraries(sim_camera ICamera timing)
+add_library(msensor::sim_camera ALIAS msensor_sim_camera)
+target_link_libraries(msensor_sim_camera msensor::ICamera msensor::timing)

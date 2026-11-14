@@ -6,6 +6,8 @@
 #include "lidar.grpc.pb.h"
 #include "msensor/interface/ILidar.hh"
 
+namespace msensor {
+
 /**
  * @brief Implements the LiDAR gRPC service.
  *
@@ -25,3 +27,11 @@ private:
   std::shared_ptr<msensor::ILidar> lidar_;
   std::atomic<bool> in_use_{false};
 };
+
+} // namespace msensor
+
+#ifndef MSENSOR_NO_LEGACY_NAMES
+// Legacy global names, for downstream code. Define MSENSOR_NO_LEGACY_NAMES to
+// drop them.
+using msensor::LidarServiceImpl;
+#endif

@@ -6,6 +6,8 @@
 #include "imu.grpc.pb.h"
 #include "msensor/interface/IImu.hh"
 
+namespace msensor {
+
 /**
  * @brief Implements the IMU gRPC service.
  *
@@ -25,3 +27,11 @@ private:
   std::shared_ptr<msensor::IImu> imu_;
   std::atomic<bool> in_use_{false};
 };
+
+} // namespace msensor
+
+#ifndef MSENSOR_NO_LEGACY_NAMES
+// Legacy global names, for downstream code. Define MSENSOR_NO_LEGACY_NAMES to
+// drop them.
+using msensor::ImuServiceImpl;
+#endif

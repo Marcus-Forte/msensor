@@ -128,7 +128,8 @@ int main(int argc, char **argv) {
     camera->startSampling();
   }
 
-  SensorsServer server(adc, camera, imu, lidar);
+  msensor::SensorsServer server(
+      {.adc = adc, .camera = camera, .imu = imu, .lidar = lidar});
   server.start();
   // Serve until SIGINT/SIGTERM, then shut down and return so the driver
   // destructors run (the server is destroyed first).

@@ -12,6 +12,8 @@
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
 
+namespace msensor {
+
 /**
  * @brief This class connects to a SensorService and provides methods to get
  * sensor data remotely.
@@ -53,3 +55,11 @@ private:
   std::jthread read_thread_;
   std::jthread imu_reader_thread_;
 };
+
+} // namespace msensor
+
+#ifndef MSENSOR_NO_LEGACY_NAMES
+// Legacy global names, for downstream code. Define MSENSOR_NO_LEGACY_NAMES to
+// drop them.
+using msensor::SensorsRemoteClient;
+#endif

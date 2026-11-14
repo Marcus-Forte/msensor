@@ -6,13 +6,24 @@
 
 #include "msensor_server.hh"
 
-SensorsServer::SensorsServer(std::shared_ptr<msensor::IAdc> adc,
-                             std::shared_ptr<msensor::ICamera> camera,
-                             std::shared_ptr<msensor::IImu> imu,
-                             std::shared_ptr<msensor::ILidar> lidar,
+namespace msensor {
+
+SensorsServer::SensorsServer(Sensors sensors, ServerOptions options)
+    : lidar_service_(std::move(sensors.lidar)),
+      imu_service_(std::move(sensors.imu)),
+      camera_service_(std::move(sensors.camera), options.camera_jpeg_quality),
+      adc_service_(std::move(sensors.adc)),
+      listen_address_(std::move(options.listen_address)) {}
+
+// Legacy form: forwards to the constructor above.
+SensorsServer::SensorsServer(std::shared_ptr<IAdc> adc,
+                             std::shared_ptr<ICamera> camera,
+                             std::shared_ptr<IImu> imu,
+                             std::shared_ptr<ILidar> lidar,
                              std::string listen_address)
-    : lidar_service_(lidar), imu_service_(imu), camera_service_(camera),
-      adc_service_(adc), listen_address_(std::move(listen_address)) {}
+    : SensorsServer(Sensors{std::move(adc), std::move(camera), std::move(imu),
+                            std::move(lidar)},
+                    ServerOptions{.listen_address = std::move(listen_address)}) {}
 
 void SensorsServer::start() {
 
@@ -46,3 +57,5 @@ void SensorsServer::stop() {
                       std::chrono::seconds(1));
   }
 }
+
+} // namespace msensor

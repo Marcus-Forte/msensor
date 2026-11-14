@@ -11,6 +11,21 @@
 #include "imu_service.hh"
 #include "lidar_service.hh"
 
+namespace msensor {
+
+/// The sensors a SensorsServer publishes; leave a member null to not serve it.
+struct Sensors {
+  std::shared_ptr<IAdc> adc;
+  std::shared_ptr<ICamera> camera;
+  std::shared_ptr<IImu> imu;
+  std::shared_ptr<ILidar> lidar;
+};
+
+struct ServerOptions {
+  std::string listen_address = "0.0.0.0:50051";
+  int camera_jpeg_quality = 85; // 0..100, used when raw frames are encoded
+};
+
 /**
  * @brief This class manages the gRPC server and provides methods to publish
  * data.
@@ -18,10 +33,15 @@
  */
 class SensorsServer {
 public:
-  SensorsServer(std::shared_ptr<msensor::IAdc> adc = nullptr,
-                std::shared_ptr<msensor::ICamera> camera = nullptr,
-                std::shared_ptr<msensor::IImu> imu = nullptr,
-                std::shared_ptr<msensor::ILidar> lidar = nullptr,
+  /// Throws std::invalid_argument if options.camera_jpeg_quality is outside
+  /// [0, 100].
+  explicit SensorsServer(Sensors sensors, ServerOptions options = {});
+
+  /// Legacy positional form; equivalent to the constructor above.
+  SensorsServer(std::shared_ptr<IAdc> adc = nullptr,
+                std::shared_ptr<ICamera> camera = nullptr,
+                std::shared_ptr<IImu> imu = nullptr,
+                std::shared_ptr<ILidar> lidar = nullptr,
                 std::string listen_address = "0.0.0.0:50051");
 
   /// Build the server and start listening. Throws std::runtime_error if the
@@ -40,3 +60,11 @@ private:
   std::string listen_address_;
   std::unique_ptr<grpc::Server> server_;
 };
+
+} // namespace msensor
+
+#ifndef MSENSOR_NO_LEGACY_NAMES
+// Legacy global name, for downstream code. Define MSENSOR_NO_LEGACY_NAMES to
+// drop it.
+using msensor::SensorsServer;
+#endif

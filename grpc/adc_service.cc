@@ -1,6 +1,8 @@
 
 #include "adc_service.hh"
 
+namespace msensor {
+
 AdcServiceImpl::AdcServiceImpl(std::shared_ptr<msensor::IAdc> adc)
     : adc_(adc) {}
 
@@ -23,3 +25,5 @@ AdcServiceImpl::getAdcData(::grpc::ServerContext *context,
       adc_value->header.sequence_number);
   return ::grpc::Status::OK;
 }
+
+} // namespace msensor

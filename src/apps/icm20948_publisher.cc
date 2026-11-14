@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   icm20948->calibrate();
   icm20948->startSampling();
 
-  SensorsServer server(nullptr, nullptr, icm20948, nullptr);
+  msensor::SensorsServer server(nullptr, nullptr, icm20948, nullptr);
   server.start();
   // Serve until the process is terminated.
   server.wait();

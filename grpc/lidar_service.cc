@@ -1,7 +1,9 @@
 #include "lidar_service.hh"
-#include "msensor/conversions/conversions.hh"
+#include "msensor/conversions/lidar_imu_conversions.hh"
 #include "sensor_stream.hh"
 #include <utility>
+
+namespace msensor {
 
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
     : lidar_(std::move(lidar)) {}
@@ -16,3 +18,5 @@ grpc::ServerWriteReactor<sensors::PointCloud3> *LidarServiceImpl::getLidarScan(
       },
       "Lidar scan");
 }
+
+} // namespace msensor

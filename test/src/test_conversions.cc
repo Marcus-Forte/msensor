@@ -73,24 +73,24 @@ class ScanConversion : public ::testing::TestWithParam<size_t> {};
 TEST_P(ScanConversion, ToProtobufFillsEveryColumn) {
   const auto scan = makeScan(GetParam(), 7);
   sensors::PointCloud3 msg;
-  toProtobuf(scan, msg);
+  msensor::toProtobuf(scan, msg);
   expectColumns(scan, msg);
 }
 
 TEST_P(ScanConversion, RoundTripIsBitExact) {
   const auto scan = makeScan(GetParam(), 11);
   sensors::PointCloud3 msg;
-  toProtobuf(scan, msg);
-  expectSameScan(scan, fromProtobuf(msg));
+  msensor::toProtobuf(scan, msg);
+  expectSameScan(scan, msensor::fromProtobuf(msg));
 }
 
 TEST_P(ScanConversion, RoundTripSurvivesSerialization) {
   const auto scan = makeScan(GetParam(), 13);
   sensors::PointCloud3 msg;
-  toProtobuf(scan, msg);
+  msensor::toProtobuf(scan, msg);
   sensors::PointCloud3 parsed;
   ASSERT_TRUE(parsed.ParseFromString(msg.SerializeAsString()));
-  expectSameScan(scan, fromProtobuf(parsed));
+  expectSameScan(scan, msensor::fromProtobuf(parsed));
 }
 
 INSTANTIATE_TEST_SUITE_P(Sizes, ScanConversion,
@@ -103,13 +103,13 @@ TEST(ScanConversionReuse, ReusedMessageHoldsOnlyTheLatestScan) {
   const auto small = makeScan(5, 2);
   const auto empty = makeScan(0, 3);
 
-  toProtobuf(big, msg);
+  msensor::toProtobuf(big, msg);
   expectColumns(big, msg);
-  toProtobuf(small, msg);
+  msensor::toProtobuf(small, msg);
   expectColumns(small, msg);
-  toProtobuf(empty, msg);
+  msensor::toProtobuf(empty, msg);
   expectColumns(empty, msg);
-  toProtobuf(big, msg);
+  msensor::toProtobuf(big, msg);
   expectColumns(big, msg);
 }
 
@@ -120,7 +120,7 @@ TEST(ScanConversionReuse, StaleColorAndHeaderFieldsAreCleared) {
   msg.add_b(3.0F);
   msg.mutable_header()->set_timestamp(99);
   const auto scan = makeScan(3, 4);
-  toProtobuf(scan, msg);
+  msensor::toProtobuf(scan, msg);
   expectColumns(scan, msg);
 }
 
@@ -129,7 +129,7 @@ TEST(ScanConversionValues, IntensityIsTruncatedToAnInteger) {
   scan.points.push_back({1.5F, -2.25F, 0.0F, 7.9F});
   scan.points.push_back({-0.0F, 3.0F, 1e-30F, 255.0F});
   sensors::PointCloud3 msg;
-  toProtobuf(scan, msg);
+  msensor::toProtobuf(scan, msg);
   ASSERT_EQ(msg.intensity_size(), 2);
   EXPECT_EQ(msg.intensity(0), 7U);
   EXPECT_EQ(msg.intensity(1), 255U);
@@ -144,7 +144,7 @@ TEST(ScanConversionValues, MismatchedColumnsGiveAnEmptyScan) {
   msg.add_x(1.0F);
   msg.add_y(2.0F);
   msg.add_z(3.0F); // no intensity
-  EXPECT_TRUE(fromProtobuf(msg).points.empty());
+  EXPECT_TRUE(msensor::fromProtobuf(msg).points.empty());
 }
 
 TEST(ImuConversion, RoundTripIsExact) {
@@ -157,8 +157,8 @@ TEST(ImuConversion, RoundTripIsExact) {
                              -1.0F};
   sensors::IMUData msg;
   msg.set_ax(100.0F); // stale value must not survive
-  toProtobuf(imu, msg);
-  const auto back = fromProtobuf(msg);
+  msensor::toProtobuf(imu, msg);
+  const auto back = msensor::fromProtobuf(msg);
   EXPECT_EQ(back.header.timestamp, imu.header.timestamp);
   EXPECT_EQ(back.header.sequence_number, imu.header.sequence_number);
   EXPECT_EQ(std::memcmp(&back.ax, &imu.ax, 6 * sizeof(float)), 0);
@@ -183,7 +183,7 @@ msensor::CameraFrame makeFrame(int width, int height, uint32_t seq) {
 TEST(CameraConversion, EncodesJpegWithHeaderAndSize) {
   const auto frame = makeFrame(64, 48, 3);
   sensors::CameraStreamReply reply;
-  toProtobuf(frame, reply);
+  msensor::toProtobuf(frame, reply);
   EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::MJPEG);
   EXPECT_EQ(reply.width(), 64U);
   EXPECT_EQ(reply.height(), 48U);
@@ -199,12 +199,12 @@ TEST(CameraConversion, EncodesJpegWithHeaderAndSize) {
 
 TEST(CameraConversion, EmptyFrameSendsNoStaleImage) {
   sensors::CameraStreamReply reply;
-  toProtobuf(makeFrame(32, 16, 1), reply);
+  msensor::toProtobuf(makeFrame(32, 16, 1), reply);
   ASSERT_FALSE(reply.image_data().empty());
 
   msensor::CameraFrame empty;
   empty.header = {5, 9};
-  toProtobuf(empty, reply);
+  msensor::toProtobuf(empty, reply);
   EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::UNKNOWN);
   EXPECT_TRUE(reply.image_data().empty());
   EXPECT_EQ(reply.header().sequence_number(), 9U);
@@ -231,7 +231,7 @@ msensor::CameraFrame jpegFrame(const std::vector<uchar> &bytes, uint32_t seq) {
 TEST(CameraConversion, JpegFramePassesThroughUnchanged) {
   const auto bytes = encodeJpeg(makeFrame(96, 40, 2).mat);
   sensors::CameraStreamReply reply;
-  toProtobuf(jpegFrame(bytes, 7), reply);
+  msensor::toProtobuf(jpegFrame(bytes, 7), reply);
   EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::MJPEG);
   EXPECT_EQ(reply.width(), 96U);
   EXPECT_EQ(reply.height(), 40U);
@@ -246,7 +246,7 @@ TEST(CameraConversion, JpegColumnMatrixPassesThrough) {
   auto frame = jpegFrame(bytes, 1);
   frame.mat = frame.mat.reshape(1, static_cast<int>(bytes.size())); // Nx1
   sensors::CameraStreamReply reply;
-  toProtobuf(frame, reply);
+  msensor::toProtobuf(frame, reply);
   EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
   EXPECT_EQ(reply.width(), 48U);
   EXPECT_EQ(reply.height(), 80U);
@@ -264,7 +264,7 @@ TEST(CameraConversion, NonContinuousJpegMatrixIsGatheredInOrder) {
   frame.mat = wide.col(1);
   ASSERT_FALSE(frame.mat.isContinuous());
   sensors::CameraStreamReply reply;
-  toProtobuf(frame, reply);
+  msensor::toProtobuf(frame, reply);
   EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
   EXPECT_EQ(reply.width(), 64U);
   EXPECT_EQ(reply.height(), 32U);
@@ -284,7 +284,7 @@ TEST(CameraConversion, InvalidJpegBytesPassThroughWithoutSize) {
   };
   for (const auto &bytes : cases) {
     sensors::CameraStreamReply reply;
-    toProtobuf(jpegFrame(bytes, 1), reply);
+    msensor::toProtobuf(jpegFrame(bytes, 1), reply);
     EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::MJPEG);
     EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
     EXPECT_EQ(reply.width(), 0U);
@@ -294,13 +294,13 @@ TEST(CameraConversion, InvalidJpegBytesPassThroughWithoutSize) {
 
 TEST(CameraConversion, EmptyJpegFrameSendsNoImage) {
   sensors::CameraStreamReply reply;
-  toProtobuf(makeFrame(32, 16, 1), reply);
+  msensor::toProtobuf(makeFrame(32, 16, 1), reply);
   ASSERT_FALSE(reply.image_data().empty());
 
   msensor::CameraFrame empty;
   empty.header = {5, 9};
   empty.encoding = msensor::CameraFrameEncoding::Jpeg;
-  toProtobuf(empty, reply);
+  msensor::toProtobuf(empty, reply);
   EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::UNKNOWN);
   EXPECT_TRUE(reply.image_data().empty());
   EXPECT_EQ(reply.width(), 0U);
@@ -320,7 +320,7 @@ TEST(CameraConversion, ConcurrentEncodesKeepTheirOwnImages) {
           makeFrame(16 * (t + 1), 8 * (t + 1), static_cast<uint32_t>(t));
       sensors::CameraStreamReply reply;
       for (int i = 0; i < kFrames; ++i) {
-        toProtobuf(frame, reply);
+        msensor::toProtobuf(frame, reply);
         const std::vector<uchar> bytes(reply.image_data().begin(),
                                        reply.image_data().end());
         const cv::Mat decoded = cv::imdecode(bytes, cv::IMREAD_COLOR);

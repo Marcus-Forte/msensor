@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     recorder.start();
   }
 
-  SensorsRemoteClient client(remote_address);
+  msensor::SensorsRemoteClient client(remote_address);
   client.init();
   std::cout << "Connecting to " << remote_address << "..." << std::endl;
 

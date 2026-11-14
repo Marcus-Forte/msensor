@@ -1,7 +1,9 @@
-add_library(icm-20948
+add_library(msensor_icm20948
 icm-20948.cc)
-target_link_libraries(icm-20948 i2c IImu)
+add_library(msensor::icm20948 ALIAS msensor_icm20948)
+target_link_libraries(msensor_icm20948 i2c msensor::IImu)
 
-add_library(sim_imu
+add_library(msensor_sim_imu
 sim_imu.cc)
-target_link_libraries(sim_imu IImu)
+add_library(msensor::sim_imu ALIAS msensor_sim_imu)
+target_link_libraries(msensor_sim_imu msensor::IImu)

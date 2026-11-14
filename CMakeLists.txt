@@ -10,6 +10,10 @@ if(NOT DEFINED MSENSOR_INSTALL_PLAYBACK_PUBLISHER)
          "Install the playback_publisher executable" ${_msensor_install_playback_default})
 endif()
 
+option(MSENSOR_LEGACY_TARGET_NAMES
+       "Define the old bare target names (timing, file, sim_lidar, IImu, ...) as aliases for downstream projects"
+       ON)
+
 # Only override project-level defaults when building standalone
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(CMAKE_CXX_STANDARD 23)
@@ -33,6 +37,8 @@ add_subdirectory(third_party)
 add_subdirectory(proto)
 add_subdirectory(grpc)
 add_subdirectory(src)
+
+include(msensor_legacy_targets)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/mid360_config.json
               ${CMAKE_CURRENT_SOURCE_DIR}/config/publisher_config.json

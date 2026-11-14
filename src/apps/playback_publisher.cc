@@ -128,8 +128,9 @@ int main(int argc, char **argv) {
       std::make_shared<msensor::RecordingSensorDriver>(file, speed, !autoplay);
   driver->init();
 
-  SensorsServer server(nullptr, nullptr, driver, driver,
-                       "0.0.0.0:" + std::to_string(port));
+  msensor::SensorsServer server(
+      {.imu = driver, .lidar = driver},
+      {.listen_address = "0.0.0.0:" + std::to_string(port)});
   server.start();
 
   TerminalInputMode terminal_mode;
