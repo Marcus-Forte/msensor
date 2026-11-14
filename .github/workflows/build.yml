@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
     - name: Checkout code
@@ -18,21 +18,15 @@ jobs:
       with: 
         submodules: true
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
     - name: Pull Docker image
-      run: docker pull --platform linux/arm64 mdnf1992/cpp-dev 
+      run: docker pull --platform linux/arm64 mdnf1992/cpp-dev
 
     - name: Build application & Test
       run: |
-        docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace mdnf1992/cpp-dev /bin/bash -c "mkdir build && cd build && cmake .. && make && ctest --output-junit test-results.xml"
+        docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace mdnf1992/cpp-dev /bin/bash -c "cmake --preset gcc && cmake --build --preset build-gcc && ctest --preset test-gcc --output-junit test-results.xml"
 
     - name: Test Report
       uses: mikepenz/action-junit-report@v5
       if: success() || failure()
       with:
-        report_paths: ${{ github.workspace }}/build/test-results.xml
+        report_paths: ${{ github.workspace }}/build/gcc/test-results.xml
