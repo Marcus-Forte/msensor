@@ -3,11 +3,12 @@
 #include <chrono>
 #include <filesystem>
 #include <format>
-#include <iostream>
 #include <numbers>
 #include <stdexcept>
+#include <string>
 #include <thread>
 
+#include "msensor/log/log.hh"
 #include "msensor/timing/timing.hh"
 
 namespace msensor {
@@ -87,25 +88,21 @@ void RPLidar::init() {
                              " did not answer the device info request");
   }
   {
-    printf("SLAMTEC LIDAR S/N: ");
+    std::string serial;
     for (int pos = 0; pos < 16; ++pos) {
-      printf("%02X", devinfo.serialnum[pos]);
+      serial += std::format("{:02X}", devinfo.serialnum[pos]);
     }
-    std::cout << std::format("Firmware Ver: {}.{}"
-                             "Hardware Rev: {}",
-                             devinfo.firmware_version >> 8,
-                             devinfo.firmware_version & 0xFF,
-                             (int)devinfo.hardware_version)
-              << std::endl;
+    log::info("SLAMTEC LIDAR S/N: {} Firmware Ver: {}.{} Hardware Rev: {}",
+              serial, devinfo.firmware_version >> 8,
+              devinfo.firmware_version & 0xFF, (int)devinfo.hardware_version);
   }
 
   sl::LidarMotorInfo motorinfo;
   drv_->getMotorInfo(motorinfo);
-  std::cout << std::format("Motor info: desired speed: {}, min_speed: {}, "
-                           "max_speed: {}, ctrl_support: {}",
-                           motorinfo.desired_speed, motorinfo.min_speed,
-                           motorinfo.max_speed,
-                           static_cast<int>(motorinfo.motorCtrlSupport));
+  log::info("Motor info: desired speed: {}, min_speed: {}, "
+            "max_speed: {}, ctrl_support: {}",
+            motorinfo.desired_speed, motorinfo.min_speed, motorinfo.max_speed,
+            static_cast<int>(motorinfo.motorCtrlSupport));
 
   drv_->setMotorSpeed(0);
   drv_->startScan(0, 1);

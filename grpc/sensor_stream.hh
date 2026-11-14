@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <functional>
-#include <iostream>
 #include <mutex>
 #include <optional>
 #include <memory>
@@ -10,6 +9,8 @@
 #include <utility>
 
 #include <grpcpp/grpcpp.h>
+
+#include "msensor/log/log.hh"
 
 namespace msensor {
 
@@ -45,7 +46,7 @@ public:
                       std::atomic<bool> &in_use, std::string name)
       : install_(std::move(install)), convert_(std::move(convert)),
         in_use_(in_use), name_(std::move(name)) {
-    std::cout << "Start " << name_ << " stream." << std::endl;
+    log::info("Start {} stream.", name_);
     install_([this](Sample sample) { onSample(std::move(sample)); });
   }
 
@@ -79,7 +80,7 @@ public:
     // guarantees no further one starts.
     install_({});
     in_use_.store(false, std::memory_order_release);
-    std::cout << "Ending " << name_ << " stream." << std::endl;
+    log::info("Ending {} stream.", name_);
     delete this;
   }
 

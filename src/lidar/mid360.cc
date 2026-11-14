@@ -5,13 +5,13 @@
 #include <future>
 #include <livox_lidar_def.h>
 
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "livox_lidar_api.h"
 #include "msensor/interface/ILidar.hh"
+#include "msensor/log/log.hh"
 
 namespace msensor {
 
@@ -98,9 +98,9 @@ void Mid360::setMode(Mode mode) {
       connection_handle_, _mode,
       [](livox_status status, uint32_t handle,
          LivoxLidarAsyncControlResponse *response, void *client_data) {
-        printf("WorkModeCallback, status:%u, handle:%u, ret_code:%u, "
-               "error_key:%u\n",
-               status, handle, response->ret_code, response->error_key);
+        log::debug("WorkModeCallback, status:{}, handle:{}, ret_code:{}, "
+                   "error_key:{}",
+                   status, handle, response->ret_code, response->error_key);
         auto *promise = static_cast<std::promise<void> *>(client_data);
         promise->set_value();
       },
@@ -129,9 +129,9 @@ void Mid360::setScanPattern(ScanPattern pattern) const {
       connection_handle_, scan_pattern,
       [](livox_status status, uint32_t handle,
          LivoxLidarAsyncControlResponse *response, void *client_data) {
-        printf("SetLivoxLidarScanPattern, status:%u, handle:%u, ret_code:%u, "
-               "error_key:%u\n",
-               status, handle, response->ret_code, response->error_key);
+        log::debug("SetLivoxLidarScanPattern, status:{}, handle:{}, ret_code:{}, "
+                   "error_key:{}",
+                   status, handle, response->ret_code, response->error_key);
         auto *promise = static_cast<std::promise<void> *>(client_data);
         promise->set_value();
       },
@@ -147,10 +147,10 @@ void Mid360::init() {
   if (sdk_initialized_) {
     return;
   }
-  std::cout << "config:  " << config_ << std::endl;
+  log::info("config:  {}", config_);
   if (!LivoxLidarSdkInit(config_.c_str())) {
     LivoxLidarSdkUninit();
-    std::cout << "Livox-SDK init fail!" << std::endl;
+    log::error("Livox-SDK init fail!");
     throw std::runtime_error("Unable to initialize Mid360!");
   }
   sdk_initialized_ = true;
@@ -168,10 +168,10 @@ void Mid360::init() {
 
         auto *self = static_cast<Mid360 *>(client_data);
 
-        std::cout << "Lidar IP: " << info->lidar_ip << std::endl;
-        std::cout << "DevType: " << info->dev_type << std::endl;
-        std::cout << "SN: " << info->sn << std::endl;
-        std::cout << "handle: " << std::to_string(handle) << std::endl;
+        log::info("Lidar IP: {}", static_cast<const char *>(info->lidar_ip));
+        log::info("DevType: {}", static_cast<int>(info->dev_type));
+        log::info("SN: {}", static_cast<const char *>(info->sn));
+        log::info("handle: {}", handle);
 
         // A promise may be satisfied only once; later devices are ignored.
         if (!self->info_received_.exchange(true)) {
@@ -187,7 +187,7 @@ void Mid360::init() {
     throw std::runtime_error("Unable to get Lidar Info scan!");
   }
   connection_handle_ = future.get();
-  std::cout << "connection_handle_: " << connection_handle_ << std::endl;
+  log::debug("connection_handle_: {}", connection_handle_);
 
   SetLivoxLidarImuDataCallback(
       [](const uint32_t handle, const uint8_t dev_type,

@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -17,6 +16,7 @@
 #include "msensor/lidar/mid360.hh"
 #include "msensor/lidar/rp_lidar.hh"
 #include "msensor/lidar/sim_lidar.hh"
+#include "msensor/log/log.hh"
 
 namespace msensor {
 namespace {
@@ -57,13 +57,12 @@ Sensors makeSensors(const Config &config) {
       config.mid360.enable && !(config.sim.lidar && config.sim.imu);
 
   if (config.mid360.enable && config.rplidar.enable && !config.sim.lidar) {
-    std::cerr << "Both mid360 and rplidar are enabled; preferring mid360."
-              << std::endl;
+    log::warn("Both mid360 and rplidar are enabled; preferring mid360.");
   }
 
   if (use_mid360) {
-    std::cout << "Mid360 accumulation samples: "
-              << config.mid360.accumulate_scan_count << std::endl;
+    log::info("Mid360 accumulation samples: {}",
+              config.mid360.accumulate_scan_count);
     if (config.mid360.config.empty()) {
       throw std::runtime_error(
           "mid360 is enabled but no config path was provided.");
@@ -94,9 +93,8 @@ Sensors makeSensors(const Config &config) {
     if (!config.sim.imu) {
       sensors.imu = mid360;
       if (config.icm20948.enable) {
-        std::cerr << "mid360 already provides IMU data; skipping standalone "
-                     "ICM20948 initialization."
-                  << std::endl;
+        log::warn("mid360 already provides IMU data; skipping standalone "
+                  "ICM20948 initialization.");
       }
     }
   } else if (config.rplidar.enable && !config.sim.lidar) {
@@ -107,15 +105,14 @@ Sensors makeSensors(const Config &config) {
       rp->startSampling();
       sensors.lidar = rp;
     } else {
-      std::cerr << "Lidar device: " << config.rplidar.device
-                << " does not exist. Lidar will be unavailable." << std::endl;
+      log::warn("Lidar device: {} does not exist. Lidar will be unavailable.",
+                config.rplidar.device.string());
     }
   }
 
   if (config.sim.lidar) {
     if (config.mid360.enable || config.rplidar.enable) {
-      std::cerr << "sim.lidar overrides the enabled hardware lidar."
-                << std::endl;
+      log::warn("sim.lidar overrides the enabled hardware lidar.");
     }
     auto sim = std::make_shared<SimLidar>(false);
     sim->startSampling();
@@ -124,7 +121,7 @@ Sensors makeSensors(const Config &config) {
 
   if (config.sim.adc) {
     if (config.ads1115.enable) {
-      std::cerr << "sim.adc overrides the enabled ads1115." << std::endl;
+      log::warn("sim.adc overrides the enabled ads1115.");
     }
     sensors.adc = std::make_shared<SimAdc>();
   } else if (config.ads1115.enable) {
@@ -139,7 +136,7 @@ Sensors makeSensors(const Config &config) {
 
   if (config.sim.imu) {
     if (config.icm20948.enable || config.mid360.enable) {
-      std::cerr << "sim.imu overrides the enabled hardware IMU." << std::endl;
+      log::warn("sim.imu overrides the enabled hardware IMU.");
     }
     auto sim = std::make_shared<SimImu>();
     sim->startSampling();
@@ -155,14 +152,13 @@ Sensors makeSensors(const Config &config) {
 
   if (config.sim.camera) {
     if (config.camera.enable) {
-      std::cerr << "sim.camera overrides the enabled camera." << std::endl;
+      log::warn("sim.camera overrides the enabled camera.");
     }
     auto sim = std::make_shared<SimCamera>();
     sim->startSampling();
     sensors.camera = sim;
   } else if (config.camera.enable) {
-    std::cout << "Using camera pipeline: " << config.camera.pipeline
-              << std::endl;
+    log::info("Using camera pipeline: {}", config.camera.pipeline);
     auto camera = std::make_shared<OpenCvCamera>(
         std::string(config.camera.pipeline),
         config.camera.encoding == "jpeg" ? CameraFrameEncoding::Jpeg

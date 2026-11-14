@@ -8,10 +8,10 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include "msensor/log/log.hh"
 #include "msensor/timing/timing.hh"
 
 #include <format>
-#include <iostream>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -113,14 +113,13 @@ bool ADS1115::init(Gain gain, DataRate rate, Channel channel,
   config |= CONFIG_MODE_CONTINUOUS;
   // config |= CONFIG_OS_SINGLE;
   config |= CONFIG_COMP_QUEUE_DISABLE;
-  std::cout << std::format("ADS1115 config: 0x{:04X}\n", config);
+  log::debug("ADS1115 config: 0x{:04X}", config);
   int16_t res = write_(REG_CONFIG, config);
 
-  std::cout << std::format("res: {}\n", res);
+  log::debug("res: {}", res);
 
   uint16_t readback = read_(REG_CONFIG);
-  std::cout << std::format("Post Config ADS1115 readback config: 0x{:04X}\n",
-                           readback);
+  log::debug("Post Config ADS1115 readback config: 0x{:04X}", readback);
 
   return res == 0;
 }

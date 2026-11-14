@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include "msensor/conversions/lidar_imu_conversions.hh"
+#include "msensor/log/log.hh"
 #include "sensors_remote_client.hh"
 
 namespace msensor {
@@ -79,11 +80,9 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
       return;
     }
     if (status.ok()) {
-      std::cout << "Remote " << name << " stream ended; reconnecting."
-                << std::endl;
+      log::warn("Remote {} stream ended; reconnecting.", name);
     } else {
-      std::cout << "Unable to read remote " << name << ": "
-                << status.error_message() << std::endl;
+      log::warn("Unable to read remote {}: {}", name, status.error_message());
     }
     interruptibleSleep(st,
                        std::chrono::milliseconds(g_connectionRecoverDelayMs));

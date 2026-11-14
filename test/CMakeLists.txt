@@ -55,6 +55,10 @@ add_executable(test_sensor_factory src/test_sensor_factory.cc)
 target_link_libraries(test_sensor_factory msensor::sensor_factory gtest_main gtest)
 gtest_discover_tests(test_sensor_factory)
 
+add_executable(test_log src/test_log.cc)
+target_link_libraries(test_log msensor::interface gtest_main gtest)
+gtest_discover_tests(test_log)
+
 add_executable(draft draft.cc)
 target_link_libraries(draft msensor::scan_recorder)
 

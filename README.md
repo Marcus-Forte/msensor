@@ -57,6 +57,10 @@ uv run client.py --imu --camera           # pick streams
 
 See `client/README.md` for proto regeneration instructions.
 
+## Logging
+
+Library code reports through the small `msensor::log` facade (`msensor/log/log.hh`): `debug`, `info`, `warn` and `error` take a `std::format` string. The default threshold is `info`, set at startup with the `MSENSOR_LOG_LEVEL` environment variable (`debug`, `info`, `warn`, `error` or `off`) or at run time with `msensor::log::setLevel`. `msensor::log::setSink` redirects the messages (the default sink writes `[level] message` lines to stdout, or stderr for warn and error).
+
 ## Docker
 
 A `deployment/Dockerfile` is provided to offer small footprint images that allows one to run the sensor driver applications from inside a container. 

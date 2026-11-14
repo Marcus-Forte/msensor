@@ -1,7 +1,7 @@
 #include "msensor/lidar/sim_lidar.hh"
+#include "msensor/log/log.hh"
 #include "msensor/timing/timing.hh"
 #include <chrono>
-#include <iostream>
 
 namespace msensor {
 
@@ -15,14 +15,13 @@ SimLidar::SimLidar(bool steady)
   if (steady_) {
     steady_points_ = makeSteadyPoints();
   }
-  std::cout << "SimLidar initialized. steady=" << std::boolalpha << steady_
-            << std::endl;
+  log::debug("SimLidar initialized. steady={}", steady_);
 }
 
-void SimLidar::init() { std::cout << "init" << std::endl; }
+void SimLidar::init() { log::debug("init"); }
 
 void SimLidar::startSampling() {
-  std::cout << "startSampling" << std::endl;
+  log::debug("startSampling");
   sampler_.startPeriodic(kPeriod, [this] {
     // No consumer: produce nothing, so sequence numbers stay unconsumed.
     if (callback_.hasCallback()) {
@@ -32,7 +31,7 @@ void SimLidar::startSampling() {
 }
 
 void SimLidar::stopSampling() {
-  std::cout << "stopSampling" << std::endl;
+  log::debug("stopSampling");
   sampler_.stop();
 }
 

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "msensor/log/log.hh"
 #include "msensor_server.hh"
 
 namespace msensor {
@@ -40,7 +41,7 @@ void SensorsServer::start() {
     throw std::runtime_error("Unable to start gRPC server on " +
                              listen_address_);
   }
-  std::cout << "Listening on " << listen_address_ << "..." << std::endl;
+  log::info("Listening on {}...", listen_address_);
 }
 
 void SensorsServer::wait() {

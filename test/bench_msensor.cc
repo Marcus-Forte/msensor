@@ -38,6 +38,7 @@
 
 #include "msensor/conversions/conversions.hh"
 #include "msensor/file/file.hh"
+#include "msensor/log/log.hh"
 #include "msensor/interface/CallbackSlot.hh"
 #include "msensor/recorder/recording_driver.hh"
 #include "msensor/recorder/scan_player.hh"
@@ -659,6 +660,8 @@ void usage(const char *program) {
 } // namespace
 
 int main(int argc, char **argv) {
+  // Servers started by the benchmark log lifecycle lines; keep stdout clean.
+  msensor::log::setLevel(msensor::log::Level::warn);
   Options options;
   for (int i = 1; i < argc; ++i) {
     const std::string_view arg(argv[i]);

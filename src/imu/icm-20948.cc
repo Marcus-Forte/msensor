@@ -11,6 +11,7 @@ extern "C" {
 
 #include "msensor/imu/icm-20948.h"
 #include "msensor/imu/icm-20948_defs.h"
+#include "msensor/log/log.hh"
 #include "msensor/timing/timing.hh"
 #include <chrono>
 
@@ -147,9 +148,9 @@ bool ICM20948::calibrate() const {
   auto gyro_scale = get_gyro_scale();
   auto gyro_offset_factor = get_gyro_offset_scale(gyro_scale);
 
-  printf("gyro factor = %d\n", gyro_offset_factor);
-  printf("acc_gravity_scale factor = %d\n", acc_gravity_scale);
-  printf("acc_scale_offset_factor factor = %d\n", acc_scale_offset_factor);
+  log::debug("gyro factor = {}", gyro_offset_factor);
+  log::debug("acc_gravity_scale factor = {}", acc_gravity_scale);
+  log::debug("acc_scale_offset_factor factor = {}", acc_scale_offset_factor);
   bank_select(0);
 
   // calibration configuration
@@ -189,8 +190,8 @@ bool ICM20948::calibrate() const {
   // Add gravity. Assuming IMU is flat.
   acc_offset[2] += 32767 / acc_gravity_scale;
 
-  printf("Acc scale: %d", acc_scale);
-  printf("scales: %d , %d\n\n", acc_gravity_scale, acc_scale_offset_factor);
+  log::debug("Acc scale: {} scales: {} , {}", static_cast<int>(acc_scale),
+             acc_gravity_scale, acc_scale_offset_factor);
   // Use full scale
   // Reduce to full scale (divide) and apply one's compliement.  // Those are 15
   // bit registers.
