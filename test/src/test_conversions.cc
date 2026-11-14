@@ -210,6 +210,103 @@ TEST(CameraConversion, EmptyFrameSendsNoStaleImage) {
   EXPECT_EQ(reply.header().sequence_number(), 9U);
 }
 
+namespace {
+std::vector<uchar> encodeJpeg(const cv::Mat &image) {
+  std::vector<uchar> bytes;
+  EXPECT_TRUE(cv::imencode(".jpg", image, bytes));
+  return bytes;
+}
+
+msensor::CameraFrame jpegFrame(const std::vector<uchar> &bytes, uint32_t seq) {
+  msensor::CameraFrame frame;
+  frame.header = {2000U + seq, seq};
+  frame.encoding = msensor::CameraFrameEncoding::Jpeg;
+  frame.mat = cv::Mat(1, static_cast<int>(bytes.size()), CV_8UC1,
+                      const_cast<uchar *>(bytes.data()))
+                  .clone();
+  return frame;
+}
+} // namespace
+
+TEST(CameraConversion, JpegFramePassesThroughUnchanged) {
+  const auto bytes = encodeJpeg(makeFrame(96, 40, 2).mat);
+  sensors::CameraStreamReply reply;
+  toProtobuf(jpegFrame(bytes, 7), reply);
+  EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::MJPEG);
+  EXPECT_EQ(reply.width(), 96U);
+  EXPECT_EQ(reply.height(), 40U);
+  EXPECT_EQ(reply.header().timestamp(), 2007U);
+  EXPECT_EQ(reply.header().sequence_number(), 7U);
+  EXPECT_EQ(reply.image_data(),
+            std::string(bytes.begin(), bytes.end()));
+}
+
+TEST(CameraConversion, JpegColumnMatrixPassesThrough) {
+  const auto bytes = encodeJpeg(makeFrame(48, 80, 2).mat);
+  auto frame = jpegFrame(bytes, 1);
+  frame.mat = frame.mat.reshape(1, static_cast<int>(bytes.size())); // Nx1
+  sensors::CameraStreamReply reply;
+  toProtobuf(frame, reply);
+  EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
+  EXPECT_EQ(reply.width(), 48U);
+  EXPECT_EQ(reply.height(), 80U);
+}
+
+TEST(CameraConversion, NonContinuousJpegMatrixIsGatheredInOrder) {
+  const auto bytes = encodeJpeg(makeFrame(64, 32, 2).mat);
+  // Store the bytes as a column of a wider matrix: not continuous.
+  cv::Mat wide(static_cast<int>(bytes.size()), 3, CV_8UC1, cv::Scalar(0xAA));
+  cv::Mat(static_cast<int>(bytes.size()), 1, CV_8UC1,
+          const_cast<uchar *>(bytes.data()))
+      .copyTo(wide.col(1));
+  msensor::CameraFrame frame;
+  frame.encoding = msensor::CameraFrameEncoding::Jpeg;
+  frame.mat = wide.col(1);
+  ASSERT_FALSE(frame.mat.isContinuous());
+  sensors::CameraStreamReply reply;
+  toProtobuf(frame, reply);
+  EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
+  EXPECT_EQ(reply.width(), 64U);
+  EXPECT_EQ(reply.height(), 32U);
+}
+
+TEST(CameraConversion, InvalidJpegBytesPassThroughWithoutSize) {
+  const std::vector<std::vector<uchar>> cases = {
+      {0x00},
+      {0xFF, 0xD8},                          // SOI only
+      {0xFF, 0xD8, 0xFF},                    // truncated marker
+      {0xFF, 0xD8, 0xFF, 0xE0, 0x00},        // truncated length
+      {0xFF, 0xD8, 0xFF, 0xE0, 0xFF, 0xFF},  // segment runs past the end
+      {0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x00}, // truncated SOF
+      {0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x01},  // bogus SOF length
+      {0xFF, 0xD8, 0xFF, 0xC4, 0x00, 0x04, 0x00, 0x00}, // DHT is not a SOF
+      {'n', 'o', 't', ' ', 'a', ' ', 'j', 'p', 'e', 'g'},
+  };
+  for (const auto &bytes : cases) {
+    sensors::CameraStreamReply reply;
+    toProtobuf(jpegFrame(bytes, 1), reply);
+    EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::MJPEG);
+    EXPECT_EQ(reply.image_data(), std::string(bytes.begin(), bytes.end()));
+    EXPECT_EQ(reply.width(), 0U);
+    EXPECT_EQ(reply.height(), 0U);
+  }
+}
+
+TEST(CameraConversion, EmptyJpegFrameSendsNoImage) {
+  sensors::CameraStreamReply reply;
+  toProtobuf(makeFrame(32, 16, 1), reply);
+  ASSERT_FALSE(reply.image_data().empty());
+
+  msensor::CameraFrame empty;
+  empty.header = {5, 9};
+  empty.encoding = msensor::CameraFrameEncoding::Jpeg;
+  toProtobuf(empty, reply);
+  EXPECT_EQ(reply.encoding(), sensors::CameraEncoding::UNKNOWN);
+  EXPECT_TRUE(reply.image_data().empty());
+  EXPECT_EQ(reply.width(), 0U);
+  EXPECT_EQ(reply.header().sequence_number(), 9U);
+}
+
 // Frames encoded concurrently must not share an encode buffer.
 TEST(CameraConversion, ConcurrentEncodesKeepTheirOwnImages) {
   constexpr int kThreads = 4;

@@ -214,15 +214,28 @@ void Mid360::init() {
         }
         auto *this_ = reinterpret_cast<decltype(this)>(client_data);
 
+        if (!this_->scan_callback_.hasCallback()) {
+          // No consumer: drop the packet and restart accumulation (keeping the
+          // buffer's capacity), so the first scan after a consumer connects
+          // contains only packets that arrived after it connected.
+          this_->packets_in_scan_ = 0;
+          this_->accumulated_scan_.points.clear();
+          return;
+        }
+
         if (this_->packets_in_scan_ == 0) {
-          this_->accumulated_scan_.header =
-              Header{readTimestamp(data->timestamp), this_->scan_sequence_++};
+          // The sequence number is assigned on completion, so abandoned
+          // partial scans never consume one.
+          this_->accumulated_scan_.header.timestamp =
+              readTimestamp(data->timestamp);
         }
 
         convertEthPacketInto(data, data->dot_num,
                              this_->accumulated_scan_.points);
 
         if (++this_->packets_in_scan_ == this_->accumulate_scan_count_) {
+          this_->accumulated_scan_.header.sequence_number =
+              this_->scan_sequence_++;
           Scan3DI completed_scan = std::move(this_->accumulated_scan_);
           this_->accumulated_scan_ = Scan3DI{};
           this_->accumulated_scan_.points.reserve(

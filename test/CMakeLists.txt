@@ -23,7 +23,7 @@ target_link_libraries(test_recording_driver scan_recorder file gtest_main gtest)
 gtest_discover_tests(test_recording_driver)
 
 add_executable(test_sim_drivers src/test_sim_drivers.cc)
-target_link_libraries(test_sim_drivers sim_camera sim_adc gtest_main gtest)
+target_link_libraries(test_sim_drivers sim_camera sim_lidar sim_adc gtest_main gtest)
 gtest_discover_tests(test_sim_drivers)
 
 add_executable(draft draft.cc)

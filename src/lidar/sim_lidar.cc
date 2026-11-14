@@ -12,6 +12,9 @@ constexpr int kNumPoints = 2000;
 
 SimLidar::SimLidar(bool steady)
     : steady_(steady), gen_(std::random_device{}()) {
+  if (steady_) {
+    steady_points_ = makeSteadyPoints();
+  }
   std::cout << "SimLidar initialized. steady=" << std::boolalpha << steady_
             << std::endl;
 }
@@ -41,25 +44,35 @@ void SimLidar::setScanCallback(ScanCallback callback) {
 
 void SimLidar::run(std::stop_token st) {
   while (!st.stop_requested()) {
-    callback_.emit(makeScan());
+    // No consumer: produce nothing, so sequence numbers stay unconsumed.
+    if (callback_.hasCallback()) {
+      callback_.emit(makeScan());
+    }
     std::this_thread::sleep_for(kPeriod);
   }
 }
 
+std::vector<Point3I> SimLidar::makeSteadyPoints() {
+  std::vector<Point3I> points;
+  points.reserve(kNumPoints);
+  std::uniform_real_distribution<> dis(-10.0, 10.0);
+  std::mt19937 fixed(67); // fixed seed for deterministic output
+  for (int i = 0; i < kNumPoints; ++i) {
+    points.emplace_back(dis(fixed), dis(fixed), dis(fixed), i);
+  }
+  return points;
+}
+
 Scan3DI SimLidar::makeScan() {
   Scan3DI scan;
-  scan.points.reserve(kNumPoints);
-
-  std::uniform_real_distribution<> dis(-10.0, 10.0);
   if (!steady_) {
+    scan.points.reserve(kNumPoints);
+    std::uniform_real_distribution<> dis(-10.0, 10.0);
     for (int i = 0; i < kNumPoints; ++i) {
       scan.points.emplace_back(dis(gen_), dis(gen_), dis(gen_), i);
     }
   } else {
-    std::mt19937 fixed(67); // fixed seed for deterministic output
-    for (int i = 0; i < kNumPoints; ++i) {
-      scan.points.emplace_back(dis(fixed), dis(fixed), dis(fixed), i);
-    }
+    scan.points = steady_points_;
   }
 
   scan.header = Header{timing::getNowNs(), sequence_number_++};

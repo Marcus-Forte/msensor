@@ -33,3 +33,16 @@ cancels or a write fails, the reactor starts no further writes.
 `Mid360::stopSampling()` uninitialises the Livox SDK, which stops its
 callbacks; sampling again requires `init()` first. Its SDK callback lifecycle
 therefore differs from the explicitly joined `std::jthread` drivers.
+
+## No consumer, no work
+
+Sequence numbers count produced samples, so a driver that skips work while its
+callback slot is empty does not advance them; a consumer that connects later
+gets a whole, fresh sample with the next number. `OpenCvCamera` calls
+`grab()` instead of `read()` (the pipeline keeps draining, nothing is decoded
+or copied). `SimCamera`, `SimLidar` and `ICM20948` produce nothing and skip the
+frame render, point generation or I2C read. `Mid360` drops point-cloud packets
+and resets its accumulation state, so the first scan after a consumer connects
+is built only from packets that arrived after it connected (its scan sequence
+number is assigned when a scan completes); its IMU callback is unchanged.
+`RPLidar` is unchanged and keeps scanning.

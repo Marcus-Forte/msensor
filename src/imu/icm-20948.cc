@@ -89,7 +89,10 @@ void ICM20948::setImuCallback(ImuCallback callback) {
 
 void ICM20948::run(std::stop_token st) {
   while (!st.stop_requested()) {
-    callback_.emit(readSample());
+    // No consumer: skip the I2C transaction (and the sequence number).
+    if (callback_.hasCallback()) {
+      callback_.emit(readSample());
+    }
     std::this_thread::sleep_for(kSamplePeriod);
   }
 }
@@ -231,8 +234,21 @@ bool ICM20948::calibrate() const {
 }
 
 IMUData ICM20948::readSample() {
-  auto acc_data = get_acc_data();
-  auto gyr_data = get_gyro_data();
+  // Accel (0x2D..0x32) and gyro (0x33..0x38) registers are contiguous: read
+  // all 12 bytes in one transaction.
+  static_assert(REG_GYRO_XOUT_H == REG_ACCEL_XOUT_H + 6);
+  uint8_t data[12];
+  const auto bytes_read = read_block_(REG_ACCEL_XOUT_H, 12, data);
+  if (bytes_read != 12)
+    throw std::runtime_error("error getting data from accelerometer and gyro");
+  xyz_data_ acc_data;
+  acc_data.x = data[0] << 8 | data[1];
+  acc_data.y = data[2] << 8 | data[3];
+  acc_data.z = data[4] << 8 | data[5];
+  xyz_data_ gyr_data;
+  gyr_data.x = data[6] << 8 | data[7];
+  gyr_data.y = data[8] << 8 | data[9];
+  gyr_data.z = data[10] << 8 | data[11];
   auto dbl_acc_data = convert_raw_data(acc_data, FACTOR_ACC_2G);
   auto dbl_gyr_data = convert_raw_data(gyr_data, FACTOR_GYRO_500DPS_RADS);
 

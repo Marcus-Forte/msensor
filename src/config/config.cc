@@ -136,6 +136,12 @@ Config Config::fromFile(const std::filesystem::path &config_path) {
         readBoolMember(*camera, "enable", config.camera.enable);
     config.camera.pipeline =
         readStringMember(*camera, "pipeline", config.camera.pipeline);
+    config.camera.encoding =
+        readStringMember(*camera, "encoding", config.camera.encoding);
+    if (config.camera.encoding != "raw" && config.camera.encoding != "jpeg") {
+      throw std::runtime_error(
+          "'camera.encoding' must be \"raw\" or \"jpeg\".");
+    }
   }
 
   if (const auto *mid360 = readObjectMember(document, "mid360")) {

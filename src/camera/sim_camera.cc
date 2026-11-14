@@ -29,27 +29,31 @@ void SimCamera::setFrameCallback(FrameCallback callback) {
 
 void SimCamera::run(std::stop_token st) {
   while (!st.stop_requested()) {
-    callback_.emit(capture());
+    // No consumer: produce nothing, so sequence numbers stay unconsumed.
+    if (callback_.hasCallback()) {
+      CameraFrame frame;
+      frame.mat = image_.clone();
+      frame.header = {timing::getNowNs(), sequence_number_++};
+      callback_.emit(std::move(frame));
+    }
     std::this_thread::sleep_for(kPeriod);
   }
 }
 
-CameraFrame SimCamera::capture() {
-  // Generate a simple synthetic image (e.g., a gradient)
+cv::Mat SimCamera::makeImage() {
+  // A simple synthetic image (a gradient).
   constexpr int width = 640;
   constexpr int height = 480;
   constexpr int factor = 256;
 
-  CameraFrame frame;
-  frame.mat.create(height, width, CV_8UC3);
+  cv::Mat image(height, width, CV_8UC3);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      frame.mat.at<cv::Vec3b>(y, x) =
+      image.at<cv::Vec3b>(y, x) =
           cv::Vec3b(x % factor, y % factor, (x + y) % factor);
     }
   }
-  frame.header = {timing::getNowNs(), sequence_number_++};
-  return frame;
+  return image;
 }
 
 bool SimCamera::isOpened() const { return true; }

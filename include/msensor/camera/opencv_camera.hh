@@ -24,16 +24,24 @@ public:
    *
    * @param device_id Camera device index (0 for default camera, 1 for second,
    * etc.) or video file path. Passed directly to cv::VideoCapture::open().
+   * @param encoding What the capture delivers (see CameraFrameEncoding).
    */
-  OpenCvCamera(int device_id);
+  explicit OpenCvCamera(
+      int device_id, CameraFrameEncoding encoding = CameraFrameEncoding::Raw);
 
   /**
    * @brief Construct a new OpenCV Camera object.
    *
    * @param pipeline GStreamer pipeline string for advanced camera
    * configurations.
+   * @param encoding What the pipeline delivers. Use Jpeg for pipelines that
+   * end in already-encoded JPEG (e.g. a camera's native MJPEG, or
+   * `... ! jpegenc ! appsink`): OpenCV's GStreamer backend then returns the
+   * encoded buffer as a 1xN CV_8UC1 matrix.
    */
-  OpenCvCamera(std::string &&pipeline);
+  explicit OpenCvCamera(
+      std::string &&pipeline,
+      CameraFrameEncoding encoding = CameraFrameEncoding::Raw);
 
   /**
    * @brief Destroy the OpenCV Camera object.
@@ -69,6 +77,7 @@ private:
   /// Capture loop; runs on the capture thread.
   void run(std::stop_token st);
 
+  const CameraFrameEncoding encoding_;
   cv::VideoCapture m_capture; ///< OpenCV video capture object.
   uint32_t sequence_number_ = 0; ///< Capture thread only.
   CallbackSlot<CameraFrame> callback_;

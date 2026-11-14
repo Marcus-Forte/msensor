@@ -8,11 +8,15 @@
 
 namespace msensor {
 
-OpenCvCamera::OpenCvCamera(std::string &&pipeline) {
+OpenCvCamera::OpenCvCamera(std::string &&pipeline, CameraFrameEncoding encoding)
+    : encoding_(encoding) {
   m_capture.open(pipeline, cv::CAP_GSTREAMER);
 }
 
-OpenCvCamera::OpenCvCamera(int device_id) { m_capture.open(device_id); }
+OpenCvCamera::OpenCvCamera(int device_id, CameraFrameEncoding encoding)
+    : encoding_(encoding) {
+  m_capture.open(device_id);
+}
 
 OpenCvCamera::~OpenCvCamera() {
   stopSampling();
@@ -40,6 +44,14 @@ void OpenCvCamera::setFrameCallback(FrameCallback callback) {
 
 void OpenCvCamera::run(std::stop_token st) {
   while (!st.stop_requested()) {
+    if (!callback_.hasCallback()) {
+      // No consumer: keep the pipeline draining, but do not decode, copy or
+      // allocate, and do not consume a sequence number.
+      if (!isOpened() || !m_capture.grab()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+      continue;
+    }
     CameraFrame frame;
     if (capture(frame)) {
       callback_.emit(std::move(frame));
@@ -55,6 +67,7 @@ bool OpenCvCamera::capture(CameraFrame &frame) {
   }
   bool success = m_capture.read(frame.mat);
   if (success) {
+    frame.encoding = encoding_;
     frame.header = {timing::getNowNs(), sequence_number_++};
   }
   return success;

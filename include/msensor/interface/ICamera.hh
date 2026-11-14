@@ -7,9 +7,19 @@
 
 namespace msensor {
 
+/// How `CameraFrame::mat` is to be interpreted.
+enum class CameraFrameEncoding {
+  /// Decoded pixels (BGR or gray image).
+  Raw,
+  /// An already JPEG-encoded image: `mat` holds the encoded bytes as a
+  /// single-row or single-column CV_8UC1 matrix.
+  Jpeg,
+};
+
 struct CameraFrame {
   Header header;
   cv::Mat mat;
+  CameraFrameEncoding encoding = CameraFrameEncoding::Raw;
 };
 
 class ICamera {

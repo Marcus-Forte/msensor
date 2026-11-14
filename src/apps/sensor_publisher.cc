@@ -121,7 +121,9 @@ int main(int argc, char **argv) {
     std::cout << "Using camera pipeline: " << config.camera.pipeline
               << std::endl;
     camera = std::make_shared<msensor::OpenCvCamera>(
-        std::string(config.camera.pipeline));
+        std::string(config.camera.pipeline),
+        config.camera.encoding == "jpeg" ? msensor::CameraFrameEncoding::Jpeg
+                                         : msensor::CameraFrameEncoding::Raw);
     camera->startSampling();
   }
 

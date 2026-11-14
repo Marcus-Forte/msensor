@@ -44,6 +44,7 @@
 #include "msensor/recorder/scan_recorder.hh"
 #include "msensor_server.hh"
 #include "recording.pb.h"
+#include <opencv2/imgcodecs.hpp>
 #include "sensors_remote_client.hh"
 
 namespace {
@@ -604,6 +605,49 @@ PassResult grpcImuPingPong(GrpcRig &rig,
   return r;
 }
 
+// ---------------------------------------------------------------------------
+// Camera conversion: raw frame (JPEG-encoded on conversion) vs. a frame that
+// is already JPEG (passed through).
+
+/// Deterministic 1536x864 BGR image: gradient plus fixed-seed noise.
+cv::Mat makeSyntheticImage() {
+  constexpr int kWidth = 1536;
+  constexpr int kHeight = 864;
+  cv::Mat image(kHeight, kWidth, CV_8UC3);
+  std::mt19937 gen(1234);
+  std::uniform_int_distribution<int> noise(-12, 12);
+  const auto clamp8 = [](int v) {
+    return static_cast<uchar>(std::clamp(v, 0, 255));
+  };
+  for (int y = 0; y < kHeight; ++y) {
+    auto *row = image.ptr<cv::Vec3b>(y);
+    for (int x = 0; x < kWidth; ++x) {
+      row[x] = cv::Vec3b(clamp8(x * 255 / kWidth + noise(gen)),
+                         clamp8(y * 255 / kHeight + noise(gen)),
+                         clamp8((x + y) * 255 / (kWidth + kHeight) + noise(gen)));
+    }
+  }
+  return image;
+}
+
+PassResult cameraToProto(const msensor::CameraFrame &frame, int repeat) {
+  PassResult r;
+  Hasher hs;
+  sensors::CameraStreamReply msg;
+  const auto t0 = Clock::now();
+  for (int i = 0; i < repeat; ++i) {
+    toProtobuf(frame, msg);
+    hs.bytes(msg.image_data().data(), msg.image_data().size());
+    hs.word(msg.width());
+    hs.word(msg.height());
+    hs.word(static_cast<uint64_t>(msg.encoding()));
+    ++r.ops;
+  }
+  r.seconds = Seconds(Clock::now() - t0).count();
+  r.checksum = hs.h;
+  return r;
+}
+
 void usage(const char *program) {
   std::fprintf(stderr,
                "Usage: %s [--passes N] [--grpc-scans N] [--grpc-imus N] "
@@ -672,6 +716,24 @@ int main(int argc, char **argv) {
            [&] { return scansToProto(scans, repeat); });
     runRow("scan_from_proto" + suffix,
            [&] { return scansFromProto(msgs, repeat); });
+  }
+
+  {
+    msensor::CameraFrame raw;
+    raw.header = {1, 1};
+    raw.mat = makeSyntheticImage();
+    msensor::CameraFrame jpeg;
+    jpeg.header = {1, 1};
+    jpeg.encoding = msensor::CameraFrameEncoding::Jpeg;
+    std::vector<uchar> bytes;
+    cv::imencode(".jpg", raw.mat, bytes, {cv::IMWRITE_JPEG_QUALITY, 85});
+    jpeg.mat = cv::Mat(1, static_cast<int>(bytes.size()), CV_8UC1,
+                       bytes.data())
+                   .clone();
+    runRow("camera_to_proto_raw[synthetic 1536x864]",
+           [&] { return cameraToProto(raw, 20); });
+    runRow("camera_to_proto_jpeg[synthetic 1536x864]",
+           [&] { return cameraToProto(jpeg, 200); });
   }
 
   int port = 50061;

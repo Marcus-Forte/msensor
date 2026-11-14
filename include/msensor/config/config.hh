@@ -19,6 +19,9 @@ public:
 
   struct CameraConfig {
     bool enable = true;
+    /// What the pipeline delivers: "raw" (decoded pixels) or "jpeg"
+    /// (already-encoded JPEG frames, passed to clients without re-encoding).
+    std::string encoding = "raw";
     std::string pipeline =
         "libcamerasrc ! "
         "video/x-raw,format=BGR,width=1536,height=864,framerate=10/1 ! "
