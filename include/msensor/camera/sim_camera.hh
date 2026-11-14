@@ -28,6 +28,7 @@ private:
   CameraFrame capture();
   void run(std::stop_token st);
 
+  uint32_t sequence_number_ = 0; // capture thread only
   CallbackSlot<CameraFrame> callback_;
   std::jthread thread_; // last: joined before the members above are destroyed
 };

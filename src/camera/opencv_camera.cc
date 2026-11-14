@@ -55,8 +55,7 @@ bool OpenCvCamera::capture(CameraFrame &frame) {
   }
   bool success = m_capture.read(frame.mat);
   if (success) {
-    static uint32_t sequence_number = 0;
-    frame.header = {timing::getNowNs(), sequence_number++};
+    frame.header = {timing::getNowNs(), sequence_number_++};
   }
   return success;
 }

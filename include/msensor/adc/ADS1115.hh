@@ -2,6 +2,7 @@
 
 #include "msensor/interface/IAdc.hh"
 
+#include <atomic>
 #include <cstdint>
 #include <optional>
 
@@ -44,7 +45,11 @@ public:
    * @param address I2C address of the ADC.
    */
   ADS1115(int i2cBus = 1, uint8_t address = 0x48);
-  ~ADS1115() = default;
+  /// Closes the I2C device.
+  ~ADS1115() override;
+
+  ADS1115(const ADS1115 &) = delete;
+  ADS1115 &operator=(const ADS1115 &) = delete;
 
   /**
    * @brief Configure ADC gain, sampling rate and input channel.
@@ -73,6 +78,8 @@ private:
   int i2c_device_fd_;
   Gain gain_;
   float external_gain_;
+  // readSingleEnded() is const and may be called from several gRPC threads.
+  mutable std::atomic<uint32_t> sequence_number_{0};
 };
 
 } // namespace msensor

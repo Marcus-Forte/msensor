@@ -155,8 +155,10 @@ void Mid360::init() {
   }
   sdk_initialized_ = true;
 
-  std::promise<int> promise_complete;
-  auto future = promise_complete.get_future();
+  // No SDK callback can be running here: the SDK was not initialised before.
+  info_promise_ = std::promise<uint32_t>{};
+  info_received_.store(false);
+  auto future = info_promise_.get_future();
 
   SetLivoxLidarInfoChangeCallback(
       [](const uint32_t handle, const LivoxLidarInfo *info, void *client_data) {
@@ -164,17 +166,19 @@ void Mid360::init() {
           return;
         }
 
-        auto *this_ = reinterpret_cast<decltype(this)>(client_data);
+        auto *self = static_cast<Mid360 *>(client_data);
 
         std::cout << "Lidar IP: " << info->lidar_ip << std::endl;
         std::cout << "DevType: " << info->dev_type << std::endl;
         std::cout << "SN: " << info->sn << std::endl;
         std::cout << "handle: " << std::to_string(handle) << std::endl;
 
-        auto *promise = static_cast<std::promise<int> *>(client_data);
-        promise->set_value(handle);
+        // A promise may be satisfied only once; later devices are ignored.
+        if (!self->info_received_.exchange(true)) {
+          self->info_promise_.set_value(handle);
+        }
       },
-      &promise_complete);
+      this);
 
   if (future.wait_for(std::chrono::milliseconds(10000)) ==
       std::future_status::timeout) {

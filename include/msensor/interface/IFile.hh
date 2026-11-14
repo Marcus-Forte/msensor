@@ -13,6 +13,8 @@ namespace msensor {
  */
 class IFile {
 public:
+  virtual ~IFile() = default;
+
   /// Open the underlying file for writing.
   virtual void open(const std::string &filename) = 0;
   /// Write a raw buffer to the file.

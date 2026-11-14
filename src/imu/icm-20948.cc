@@ -34,21 +34,11 @@ inline int ICM20948::read_block_(uint8_t reg_address, int length,
 }
 
 void ICM20948::bank_select(int bank) const {
-  uint8_t data;
-  switch (bank) {
-  case 0:
-    data = 0b00000000;
-    break;
-  case 1:
-    data = 0b00010000;
-    break;
-  case 2:
-    data = 0b00100000;
-    break;
-  case 3:
-    data = 0b00100000;
-    break;
+  // REG_BANK_SEL holds the bank number in bits [5:4].
+  if (bank < 0 || bank > 3) {
+    throw std::invalid_argument("ICM20948 register bank must be 0..3.");
   }
+  const auto data = static_cast<uint8_t>(bank << 4);
   int res = write_(REG_REG_BANK_SEL, data);
 
   if (res != 0)
@@ -66,9 +56,16 @@ ICM20948::ICM20948(int i2c_device, int i2c_icm_address)
   }
 
   if (ioctl(i2c_device_fd_, I2C_SLAVE, i2c_icm_address) < 0) {
+    close(i2c_device_fd_);
     throw std::runtime_error("unable to open IMU device: " +
                              std::to_string(i2c_icm_address)); // to hex?
   }
+}
+
+ICM20948::~ICM20948() {
+  // The sampling thread reads through the descriptor: join it first.
+  stopSampling();
+  close(i2c_device_fd_);
 }
 
 void ICM20948::startSampling() {

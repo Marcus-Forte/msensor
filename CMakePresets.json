@@ -13,16 +13,10 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "toolchainFile": "/opt/toolchain/gcc.cmake",
       "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Release"
       }
       
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "build-gcc",
-      "configurePreset": "gcc",
-      "verbose": true
     }
   ]
 }

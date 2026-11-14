@@ -1,12 +1,17 @@
 #include "lidar.grpc.pb.h"
 #include "msensor/imu/sim_imu.hh"
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/lidar/sim_lidar.hh"
 #include "msensor_server.hh"
 #include "sensors_remote_client.hh"
+#include <atomic>
 #include <condition_variable>
+#include <cstring>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <mutex>
+#include <thread>
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -100,4 +105,105 @@ TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
   std::this_thread::sleep_for(200ms);
   c.stop();
   empty_server->stop();
+}
+
+namespace {
+
+/// Emits exactly the samples a test pushes, like a driver's sampling thread.
+class FeedSensor : public msensor::ILidar, public msensor::IImu {
+public:
+  void init() override {}
+  void startSampling() override {}
+  void stopSampling() override {}
+  void setScanCallback(ScanCallback callback) override {
+    scans_.setCallback(std::move(callback));
+  }
+  void setImuCallback(ImuCallback callback) override {
+    imus_.setCallback(std::move(callback));
+  }
+  bool hasScanConsumer() const { return scans_.hasCallback(); }
+  void push(msensor::Scan3DI scan) { scans_.emit(std::move(scan)); }
+
+private:
+  msensor::CallbackSlot<msensor::Scan3DI> scans_;
+  msensor::CallbackSlot<msensor::IMUData> imus_;
+};
+
+msensor::Scan3DI makeScan(uint32_t seq, size_t points) {
+  msensor::Scan3DI scan;
+  scan.header = {1'000'000'000ULL + seq, seq};
+  for (size_t i = 0; i < points; ++i) {
+    const float f = static_cast<float>(i) * 0.01F + static_cast<float>(seq);
+    scan.points.push_back({f, -f, f * 0.5F, static_cast<float>(i % 256)});
+  }
+  return scan;
+}
+
+} // namespace
+
+// Scans pass the server's conversion, the wire and the client's conversion
+// without any change: the client sees bit-identical points.
+TEST(ClientServerContent, ScansArriveBitExact) {
+  const std::string address = "127.0.0.1:50071";
+  auto feed = std::make_shared<FeedSensor>();
+  SensorsServer server(nullptr, nullptr, nullptr, feed, address);
+  server.start();
+  SensorsRemoteClient client(address);
+
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<msensor::Scan3DI> received;
+  client.setScanCallback([&](msensor::Scan3DI scan) {
+    std::lock_guard lock(m);
+    received.push_back(std::move(scan));
+    cv.notify_all();
+  });
+  client.start();
+  for (int i = 0; i < 500 && !feed->hasScanConsumer(); ++i) {
+    std::this_thread::sleep_for(10ms);
+  }
+  ASSERT_TRUE(feed->hasScanConsumer());
+
+  // Odd sizes exercise the scalar tails of the vectorised conversions.
+  const std::vector<size_t> sizes{1, 7, 9600, 333, 0, 100003};
+  for (uint32_t i = 0; i < sizes.size(); ++i) {
+    const auto scan = makeScan(i, sizes[i]);
+    feed->push(scan); // one at a time: latest-wins would drop queued scans
+    std::unique_lock lock(m);
+    ASSERT_TRUE(cv.wait_for(lock, 5s, [&] { return received.size() > i; }));
+    const auto &got = received[i];
+    EXPECT_EQ(got.header.timestamp, scan.header.timestamp);
+    EXPECT_EQ(got.header.sequence_number, scan.header.sequence_number);
+    ASSERT_EQ(got.points.size(), scan.points.size());
+    if (!scan.points.empty()) { // memcmp(nullptr, ...) is undefined
+      EXPECT_EQ(std::memcmp(got.points.data(), scan.points.data(),
+                            scan.points.size() * sizeof(msensor::Point3I)),
+                0)
+          << "scan " << i;
+    }
+  }
+  client.stop();
+  server.stop();
+}
+
+TEST(SensorsServerTest, WaitBlocksUntilStop) {
+  SensorsServer server(nullptr, nullptr, nullptr, nullptr, "127.0.0.1:50072");
+  server.start();
+  std::atomic<bool> returned{false};
+  std::thread waiter([&] {
+    server.wait();
+    returned.store(true);
+  });
+  std::this_thread::sleep_for(100ms);
+  EXPECT_FALSE(returned.load());
+  server.stop();
+  waiter.join();
+  EXPECT_TRUE(returned.load());
+}
+
+TEST(SensorsServerTest, StartThrowsWhenTheAddressCannotBeBound) {
+  SensorsServer server(nullptr, nullptr, nullptr, nullptr,
+                       "203.0.113.1:50073"); // not a local address
+  EXPECT_THROW(server.start(), std::runtime_error);
+  server.stop(); // still safe
 }

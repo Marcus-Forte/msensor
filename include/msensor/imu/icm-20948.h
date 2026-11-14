@@ -28,7 +28,8 @@ public:
   enum ACC_SCALE { G_16 = 3, G_8 = 2, G_4 = 1, G_2 = 0 };
 
   ICM20948(int i2c_device, int i2c_icm_address);
-  virtual ~ICM20948() = default;
+  /// Stops sampling and closes the I2C device.
+  ~ICM20948() override;
 
   bool init() const;
 

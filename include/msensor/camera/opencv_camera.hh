@@ -70,6 +70,7 @@ private:
   void run(std::stop_token st);
 
   cv::VideoCapture m_capture; ///< OpenCV video capture object.
+  uint32_t sequence_number_ = 0; ///< Capture thread only.
   CallbackSlot<CameraFrame> callback_;
   std::jthread thread_; // last: joined before the members above are destroyed
 };

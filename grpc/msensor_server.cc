@@ -1,6 +1,7 @@
 #include <chrono>
 #include <grpcpp/security/server_credentials.h>
 #include <grpcpp/server_builder.h>
+#include <stdexcept>
 #include <utility>
 
 #include "msensor_server.hh"
@@ -24,7 +25,17 @@ void SensorsServer::start() {
   builder.RegisterService(&adc_service_);
 
   server_ = builder.BuildAndStart();
+  if (!server_) {
+    throw std::runtime_error("Unable to start gRPC server on " +
+                             listen_address_);
+  }
   std::cout << "Listening on " << listen_address_ << "..." << std::endl;
+}
+
+void SensorsServer::wait() {
+  if (server_) {
+    server_->Wait();
+  }
 }
 
 void SensorsServer::stop() {

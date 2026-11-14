@@ -7,6 +7,8 @@
 #include "msensor/interface/ILidar.hh"
 
 #include <atomic>
+#include <cstdint>
+#include <future>
 
 namespace msensor {
 
@@ -77,6 +79,12 @@ private:
   uint32_t connection_handle_{0};
   bool sdk_initialized_{false};
   bool sampling_{false};
+
+  // Fulfilled by the first SDK device-info callback. The SDK keeps calling
+  // that callback (e.g. for another device on the network) until it is
+  // uninitialised, so it must target this object, not a stack promise.
+  std::promise<uint32_t> info_promise_;
+  std::atomic<bool> info_received_{false};
 };
 
 } // namespace msensor

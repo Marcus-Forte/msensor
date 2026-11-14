@@ -25,7 +25,8 @@ public:
   virtual void stopSampling() = 0;
   /// Register the single consumer of camera frames. Passing an empty callback
   /// clears it. The callback runs on the capture thread and receives ownership
-  /// of each frame.
+  /// of each frame. When this returns, no invocation of the previous callback
+  /// is still running (implementations use CallbackSlot).
   virtual void setFrameCallback(FrameCallback callback) = 0;
 
   virtual bool isOpened() const = 0;

@@ -25,7 +25,6 @@ int main(int argc, char **argv) {
   server.start();
 
   std::cout << "Publishing scan and Imu data" << std::endl;
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
+  // Serve until the process is terminated.
+  server.wait();
 }

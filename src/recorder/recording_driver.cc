@@ -36,13 +36,11 @@ void RecordingSensorDriver::stopSampling() {
 }
 
 void RecordingSensorDriver::setScanCallback(ScanCallback callback) {
-  std::lock_guard lock(scan_mutex_);
-  scan_callback_ = std::move(callback);
+  scan_callback_.setCallback(std::move(callback));
 }
 
 void RecordingSensorDriver::setImuCallback(ImuCallback callback) {
-  std::lock_guard lock(imu_mutex_);
-  imu_callback_ = std::move(callback);
+  imu_callback_.setCallback(std::move(callback));
 }
 
 void RecordingSensorDriver::setPaused(bool paused) {
@@ -267,10 +265,10 @@ void RecordingSensorDriver::run(std::stop_token st) {
 
     switch (entry.entry_case()) {
     case sensors::RecordingEntry::kScan:
-      emitScan(fromProtobuf(entry.scan()));
+      scan_callback_.emit(fromProtobuf(entry.scan()));
       break;
     case sensors::RecordingEntry::kImu:
-      emitImu(fromProtobuf(entry.imu()));
+      imu_callback_.emit(fromProtobuf(entry.imu()));
       break;
     default:
       break;
@@ -280,20 +278,6 @@ void RecordingSensorDriver::run(std::stop_token st) {
   }
 
   finished_.store(true);
-}
-
-void RecordingSensorDriver::emitScan(const Scan3DI &scan) {
-  std::lock_guard lock(scan_mutex_);
-  if (scan_callback_) {
-    scan_callback_(scan);
-  }
-}
-
-void RecordingSensorDriver::emitImu(const IMUData &imu) {
-  std::lock_guard lock(imu_mutex_);
-  if (imu_callback_) {
-    imu_callback_(imu);
-  }
 }
 
 } // namespace msensor

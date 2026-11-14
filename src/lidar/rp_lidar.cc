@@ -11,6 +11,7 @@
 
 namespace msensor {
 
+namespace {
 constexpr uint32_t g_baudRate = 115200;
 
 Scan3DI toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes,
@@ -34,6 +35,7 @@ Scan3DI toScan3D(const sl_lidar_response_measurement_node_hq_t *nodes,
 
   return scan;
 }
+} // namespace
 
 RPLidar::RPLidar(const std::string &serial_port) {
 

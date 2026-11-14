@@ -86,17 +86,19 @@ ADS1115::ADS1115(int i2c_device, uint8_t i2c_ads_address)
   }
 
   if (ioctl(i2c_device_fd_, I2C_SLAVE, i2c_ads_address_) < 0) {
-    throw std::runtime_error("unable to open IMU device: " +
+    close(i2c_device_fd_);
+    throw std::runtime_error("unable to open ADS1115 device: " +
                              std::to_string(i2c_ads_address_)); // to hex?
   }
 }
 
+ADS1115::~ADS1115() { close(i2c_device_fd_); }
+
 std::optional<AdcSample> ADS1115::readSingleEnded() const {
-  static uint32_t sequence_number = 0;
   const auto raw = readConversion();
-  return AdcSample{Header{timing::getNowUs(), sequence_number++},
-                   convertRawToVoltage(raw) * external_gain_,
-                   timing::getNowUs()};
+  const uint64_t now = timing::getNowNs();
+  return AdcSample{Header{now, sequence_number_++},
+                   convertRawToVoltage(raw) * external_gain_, now};
 }
 
 bool ADS1115::init(Gain gain, DataRate rate, Channel channel,

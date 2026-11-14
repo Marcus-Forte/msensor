@@ -44,7 +44,9 @@ public:
    *
    * The callback runs on the driver's sampling thread and receives ownership
    * of each sample. Passing an empty callback clears it. There is at most one
-   * consumer per stream.
+   * consumer per stream. When this returns, no invocation of the previous
+   * callback is still running (implementations use CallbackSlot), so its
+   * owner may then be destroyed.
    */
   virtual void setImuCallback(ImuCallback callback) = 0;
 };

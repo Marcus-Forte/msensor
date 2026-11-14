@@ -48,8 +48,7 @@ CameraFrame SimCamera::capture() {
           cv::Vec3b(x % factor, y % factor, (x + y) % factor);
     }
   }
-  static uint32_t sequence_number = 0;
-  frame.header = {timing::getNowNs(), sequence_number++};
+  frame.header = {timing::getNowNs(), sequence_number_++};
   return frame;
 }
 

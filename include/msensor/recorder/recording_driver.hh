@@ -1,5 +1,6 @@
 #pragma once
 
+#include "msensor/interface/CallbackSlot.hh"
 #include "msensor/interface/IImu.hh"
 #include "msensor/interface/ILidar.hh"
 #include "msensor/recorder/scan_player.hh"
@@ -24,6 +25,9 @@ namespace msensor {
  * When the recording is exhausted isFinished() returns true. Unlike a hardware
  * driver, the driver does not know about the consumer's stream lifetime; the
  * owner (e.g. the playback server) is responsible for ending the stream.
+ *
+ * Callbacks run on the playback thread and receive ownership of each sample;
+ * a scan is converted once and moved to the consumer, never copied.
  */
 class RecordingSensorDriver : public ILidar, public IImu {
 public:
@@ -58,8 +62,6 @@ public:
 
 private:
   void run(std::stop_token st);
-  void emitScan(const Scan3DI &scan);
-  void emitImu(const IMUData &imu);
 
   ScanPlayer player_;
   std::atomic<double> speed_;
@@ -70,10 +72,8 @@ private:
   std::atomic<bool> paused_{false};
   std::atomic<bool> reset_requested_{false};
 
-  std::mutex scan_mutex_;
-  ScanCallback scan_callback_;
-  std::mutex imu_mutex_;
-  ImuCallback imu_callback_;
+  CallbackSlot<Scan3DI> scan_callback_;
+  CallbackSlot<IMUData> imu_callback_;
 
   std::atomic<bool> started_{false};
   std::atomic<bool> finished_{false};

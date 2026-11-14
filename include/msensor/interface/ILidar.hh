@@ -71,7 +71,9 @@ public:
    *
    * The callback runs on the driver's sampling thread and receives ownership
    * of each scan. Passing an empty callback clears it. There is at most one
-   * consumer per stream.
+   * consumer per stream. When this returns, no invocation of the previous
+   * callback is still running (implementations use CallbackSlot), so its
+   * owner may then be destroyed.
    *
    * @note The associated timestamp is assumed to be the time
    * point[0] was measured. Unit: ns (1/1000000000 sec).

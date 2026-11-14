@@ -40,8 +40,6 @@ int main(int argc, char **argv) {
 
   SensorsServer server(nullptr, camera, nullptr, nullptr);
   server.start();
-
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::microseconds(100));
-  }
+  // Serve until the process is terminated.
+  server.wait();
 }

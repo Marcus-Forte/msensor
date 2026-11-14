@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
   size_t nr_scan_entries = 0;
 
   while (player.next()) {
-    const auto entry = player.getLastEntry();
+    const auto &entry = player.getLastEntry();
 
     switch (entry.entry_case()) {
     case sensors::RecordingEntry::kScan:

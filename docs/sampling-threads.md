@@ -11,6 +11,8 @@ performing acquisition depends on the driver:
 | `SimLidar`, `SimImu`, `SimCamera` | Each simulator starts its own `std::jthread` in `startSampling()` and emits generated data from it. |
 | `Mid360` | Starts the Livox SDK with `LivoxLidarSdkStart()` and receives data through SDK callbacks; msensor does not create a sampling `std::jthread` for it. |
 | `ADS1115` | Pull-based: `readSingleEnded()` performs a read when called; the driver does not start a background sampling thread. |
+| `RecordingSensorDriver` | Own `std::jthread`, started by `startSampling()`; parses the recording, paces entries by their timestamps and emits them. |
+| `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages and emits them. |
 
 For the drivers that own a `std::jthread`, `stopSampling()` requests stop and
 joins the thread. This keeps their continuous polling or capture loops off the
@@ -19,12 +21,15 @@ or configuration, are not automatically moved to a worker thread and may run
 synchronously on their caller.
 
 The sensor interfaces allow one callback consumer per stream. `CallbackSlot`
-invokes that callback directly on the producer's thread. The gRPC
-`SensorStreamReactor` registers such a callback and starts asynchronous writes;
-it does not dedicate a blocked thread to each client. If a write is already in
-flight, the reactor retains only the latest pending sample, so slow clients can
-miss samples rather than block acquisition.
+invokes that callback directly on the producer's thread and moves the sample
+into it. Clearing the callback (`setXCallback({})`) waits for an invocation
+that is still running, so the consumer may be destroyed once it returns. The
+gRPC `SensorStreamReactor` registers such a callback and starts asynchronous
+writes; it does not dedicate a blocked thread to each client. If a write is
+already in flight, the reactor retains only the latest pending sample, so slow
+clients can miss samples rather than block acquisition. Once the client
+cancels or a write fails, the reactor starts no further writes.
 
-The Mid360 driver currently leaves `stopSampling()` unimplemented. Its SDK
-callback lifecycle therefore differs from the explicitly joined `std::jthread`
-drivers.
+`Mid360::stopSampling()` uninitialises the Livox SDK, which stops its
+callbacks; sampling again requires `init()` first. Its SDK callback lifecycle
+therefore differs from the explicitly joined `std::jthread` drivers.

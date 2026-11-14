@@ -24,7 +24,12 @@ public:
                 std::shared_ptr<msensor::ILidar> lidar = nullptr,
                 std::string listen_address = "0.0.0.0:50051");
 
+  /// Build the server and start listening. Throws std::runtime_error if the
+  /// server cannot be started (e.g. the address cannot be bound).
   void start();
+  /// Block the calling thread until the server is shut down by stop().
+  void wait();
+  /// Shut down, giving in-flight streams up to one second to finish.
   void stop();
 
 private:

@@ -13,7 +13,7 @@ See `src/<sensor_type>/` for examples.
 
 ### Server
 
-Publisher executables (e.g. `sensor_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**.
+Publisher executables (e.g. `sensor_publisher`, `sim_publisher`) instantiate concrete drivers, inject them into `SensorsServer`, and expose all four gRPC services on port **50051**. `SensorsServer::start()` throws `std::runtime_error` if the address cannot be bound; `wait()` blocks until `stop()`.
 
 `sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/usr/local/etc/publisher_config.json` (the installed template is `config/publisher_config.json`), or you can pass a different file path as the only argument.
 
@@ -48,3 +48,9 @@ A `docker-compose.yml` is provided in `docker` folder illustrating how to compos
 
 Use `remote_recorder` to store sensory data to a `pbscan` file.
 Via docker use `docker run --rm -v ./:/app mdnf1992/msensor remote_recorder <server>`
+
+Each entry of a `.pbscan` file is a native-endian `uint64` byte count followed by a serialized `sensors::RecordingEntry` (`proto/recording.proto`). `scan_checker -f <file>` counts the entries; `playback_publisher -f <file>` serves them again over gRPC.
+
+## Benchmark
+
+`bench_msensor` (built with the tests, not run by CTest) times the conversion, playback, recording and gRPC paths on synthetic scans and on the recordings given as arguments, e.g. `build/gcc/test/bench_msensor --passes 3 rooms.pbscan`. Every row prints a checksum of its output, so two builds can be compared for equivalence as well as speed.
