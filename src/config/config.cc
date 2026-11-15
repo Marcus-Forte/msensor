@@ -291,6 +291,27 @@ Config Config::fromFile(const std::filesystem::path &config_path) {
     config.sim.adc = readBoolMember(*sim, "adc", config.sim.adc, "sim");
   }
 
+  if (const auto *recording = readObjectMember(document, "recording")) {
+    config.recording.enable = readBoolMember(
+        *recording, "enable", config.recording.enable, "recording");
+    config.recording.file = readStringMember(
+        *recording, "file", config.recording.file, "recording");
+    const int scan_queue = readIntMember(
+        *recording, "scan_queue", static_cast<int>(config.recording.scan_queue),
+        "recording");
+    if (scan_queue <= 0) {
+      throw std::runtime_error("'recording.scan_queue' must be positive.");
+    }
+    config.recording.scan_queue = static_cast<std::size_t>(scan_queue);
+    const int imu_queue = readIntMember(
+        *recording, "imu_queue", static_cast<int>(config.recording.imu_queue),
+        "recording");
+    if (imu_queue <= 0) {
+      throw std::runtime_error("'recording.imu_queue' must be positive.");
+    }
+    config.recording.imu_queue = static_cast<std::size_t>(imu_queue);
+  }
+
   config.icm20948.i2c_bus = icm20948_bus.value_or(config.ads1115.i2c_bus);
 
   return config;

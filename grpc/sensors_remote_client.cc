@@ -1,3 +1,4 @@
+#include <chrono>
 #include <condition_variable>
 #include <google/protobuf/empty.pb.h>
 #include <grpcpp/client_context.h>
@@ -6,6 +7,7 @@
 
 #include "msensor/conversions/lidar_imu_conversions.hh"
 #include "msensor/log/log.hh"
+#include "sequence_gap_counter.hh"
 #include "sensors_remote_client.hh"
 
 namespace msensor {
@@ -44,14 +46,54 @@ void interruptibleSleep(std::stop_token st, std::chrono::milliseconds d) {
   cv.wait_for(lock, st, d, [] { return false; });
 }
 
+/// Loss bookkeeping of one stream, on its reader thread: counts the gaps in
+/// the sequence numbers into `total` and warns about them, at most once per
+/// second. It only observes; it never touches the samples.
+class LossTracker {
+public:
+  LossTracker(const char *name, std::atomic<uint64_t> &total)
+      : name_(name), total_(total) {}
+
+  /// A new connection starts a new stream: its first number means nothing.
+  void reconnected() noexcept { gap_.reset(); }
+
+  void observe(uint32_t sequence_number) {
+    const uint32_t lost = gap_.observe(sequence_number);
+    if (lost == 0) {
+      return;
+    }
+    const uint64_t total =
+        total_.fetch_add(lost, std::memory_order_relaxed) + lost;
+    unreported_ += lost;
+    const auto now = std::chrono::steady_clock::now();
+    if (warned_ && now - last_warn_ < std::chrono::seconds(1)) {
+      return;
+    }
+    log::warn("Remote {} stream: {} sample(s) lost (sequence number gap, "
+              "now at {}); {} lost since the client started.",
+              name_, unreported_, sequence_number, total);
+    unreported_ = 0;
+    last_warn_ = now;
+    warned_ = true;
+  }
+
+private:
+  const char *name_;
+  std::atomic<uint64_t> &total_;
+  SequenceGapCounter gap_;
+  uint64_t unreported_ = 0; // lost since the last warning
+  std::chrono::steady_clock::time_point last_warn_;
+  bool warned_ = false;
+};
+
 /// Opens a stream, forwards every message to `on_msg`, and reopens the stream
 /// after a delay when it ends. `active` always points at the live context (or
 /// is null), under `m`, so stop() can cancel a blocked Read(). Stream closure
 /// is treated as temporary so a running consumer survives a server restart or
 /// a finite playback reaching its end.
-template <class Msg, class Open, class OnMsg>
+template <class Msg, class Open, class OnConnect, class OnMsg>
 void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
-              const char *name, Open open, OnMsg on_msg) {
+              const char *name, Open open, OnConnect on_connect, OnMsg on_msg) {
   while (!st.stop_requested()) {
     grpc::ClientContext context;
     {
@@ -63,6 +105,7 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
     }
 
     grpc::Status status;
+    on_connect();
     {
       auto reader = open(&context);
       Msg msg;
@@ -96,26 +139,34 @@ void SensorsRemoteClient::start() {
   read_thread_ = std::jthread([this](std::stop_token st) {
     sensors::LidarStreamRequest request;
     request.set_max_queued_samples(options_.scan_queue_size);
+    LossTracker loss("lidar", lost_scans_);
     readLoop<sensors::PointCloud3>(
         st, ctx_m_, lidar_ctx_, "lidar",
         [&](grpc::ClientContext *ctx) {
           return lidar_stub_->getLidarScan(ctx, request);
         },
+        [&] { loss.reconnected(); },
         [&](const sensors::PointCloud3 &msg) {
-          scan_callback_.emit(fromProtobuf(msg));
+          Scan3DI scan = fromProtobuf(msg);
+          loss.observe(scan.header.sequence_number);
+          scan_callback_.emit(std::move(scan));
         });
   });
 
   imu_reader_thread_ = std::jthread([this](std::stop_token st) {
     sensors::ImuStreamRequest request;
     request.set_max_queued_samples(options_.imu_queue_size);
+    LossTracker loss("imu", lost_imu_samples_);
     readLoop<sensors::IMUData>(
         st, ctx_m_, imu_ctx_, "imu",
         [&](grpc::ClientContext *ctx) {
           return imu_stub_->getImuData(ctx, request);
         },
+        [&] { loss.reconnected(); },
         [&](const sensors::IMUData &msg) {
-          imu_callback_.emit(fromProtobuf(msg));
+          IMUData sample = fromProtobuf(msg);
+          loss.observe(sample.header.sequence_number);
+          imu_callback_.emit(std::move(sample));
         });
   });
 }

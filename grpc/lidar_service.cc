@@ -5,14 +5,29 @@
 
 namespace msensor {
 
+namespace {
+Sensors onlySensor(std::shared_ptr<ILidar> sensor) {
+  Sensors sensors;
+  sensors.lidar = std::move(sensor);
+  return sensors;
+}
+} // namespace
+
 LidarServiceImpl::LidarServiceImpl(std::shared_ptr<msensor::ILidar> lidar)
-    : lidar_(std::move(lidar)) {}
+    : LidarServiceImpl(
+          std::make_shared<SensorBus>(onlySensor(std::move(lidar))),
+          kDefaultMaxClientsPerStream) {}
+
+LidarServiceImpl::LidarServiceImpl(std::shared_ptr<SensorBus> bus,
+                                   size_t max_clients)
+    : bus_(bus ? std::move(bus) : std::make_shared<SensorBus>(Sensors{})),
+      limit_(max_clients) {}
 
 grpc::ServerWriteReactor<sensors::PointCloud3> *
 LidarServiceImpl::getLidarScan(grpc::CallbackServerContext * /*context*/,
                                const sensors::LidarStreamRequest *request) {
   return msensor::makeStreamReactor<msensor::Scan3DI, sensors::PointCloud3>(
-      lidar_, in_use_, "Lidar not available", &msensor::ILidar::setScanCallback,
+      bus_->lidar(), limit_, "Lidar not available",
       [](const msensor::Scan3DI &scan, sensors::PointCloud3 &out) {
         toProtobuf(scan, out);
       },

@@ -65,6 +65,17 @@ public:
     bool adc = false;
   } sim;
 
+  /// Recording on the sensor host (sensor_publisher). Disabled by default.
+  /// The queue depths are the BusRecorder defaults.
+  struct RecordingConfig {
+    bool enable = false;
+    /// Output `.pbscan`; relative paths are relative to the working
+    /// directory. Empty selects "scan_<timestamp>.pbscan".
+    std::string file;
+    std::size_t scan_queue = 256;  ///< Scans held while the disk is behind; > 0.
+    std::size_t imu_queue = 8192;  ///< IMU samples held while the disk is behind; > 0.
+  } recording;
+
   /// Throws std::runtime_error if the file cannot be read or parsed, or a
   /// value has the wrong type or is not allowed. A relative mid360.config is
   /// resolved against the directory of config_path.

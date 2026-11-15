@@ -22,3 +22,12 @@ target_include_directories(msensor_camera_interface INTERFACE ${OpenCV_INCLUDE_D
 
 add_library(msensor::camera_interface ALIAS msensor_camera_interface)
 add_library(msensor::ICamera ALIAS msensor_camera_interface)
+
+# In-process sensor bus (Topic, Subscription, SensorBus). Header-only; it needs
+# the sensor interfaces (OpenCV through the camera one) and a thread library.
+find_package(Threads REQUIRED)
+add_library(msensor_bus INTERFACE)
+target_include_directories(msensor_bus INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(msensor_bus INTERFACE msensor::interface msensor::camera_interface Threads::Threads)
+
+add_library(msensor::bus ALIAS msensor_bus)

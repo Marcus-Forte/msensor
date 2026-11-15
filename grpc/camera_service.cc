@@ -7,9 +7,24 @@
 
 namespace msensor {
 
+namespace {
+Sensors onlySensor(std::shared_ptr<ICamera> sensor) {
+  Sensors sensors;
+  sensors.camera = std::move(sensor);
+  return sensors;
+}
+} // namespace
+
 CameraServiceImpl::CameraServiceImpl(std::shared_ptr<msensor::ICamera> camera,
                                      int jpeg_quality)
-    : camera_(std::move(camera)), jpeg_quality_(jpeg_quality) {
+    : CameraServiceImpl(
+          std::make_shared<SensorBus>(onlySensor(std::move(camera))),
+          jpeg_quality, kDefaultMaxClientsPerStream) {}
+
+CameraServiceImpl::CameraServiceImpl(std::shared_ptr<SensorBus> bus,
+                                     int jpeg_quality, size_t max_clients)
+    : bus_(bus ? std::move(bus) : std::make_shared<SensorBus>(Sensors{})),
+      jpeg_quality_(jpeg_quality), limit_(max_clients) {
   if (jpeg_quality < 0 || jpeg_quality > 100) {
     throw std::invalid_argument("JPEG quality must be in [0, 100], got " +
                                 std::to_string(jpeg_quality));
@@ -21,8 +36,7 @@ CameraServiceImpl::getCameraFrame(grpc::CallbackServerContext * /*context*/,
                                   const sensors::CameraStreamRequest *request) {
   return msensor::makeStreamReactor<msensor::CameraFrame,
                                     sensors::CameraStreamReply>(
-      camera_, in_use_, "Camera not available",
-      &msensor::ICamera::setFrameCallback,
+      bus_->camera(), limit_, "Camera not available",
       [quality = jpeg_quality_](const msensor::CameraFrame &frame,
                                 sensors::CameraStreamReply &out) {
         toProtobuf(frame, out, quality);

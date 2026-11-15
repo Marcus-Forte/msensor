@@ -15,5 +15,12 @@
     "enable": true,
     "config": "mid360_config.json",
     "accumulate_scan_count": 100
+  },
+
+  "recording": {
+    "enable": false,
+    "file": "recording.pbscan",
+    "scan_queue": 256,
+    "imu_queue": 8192
   }
 }

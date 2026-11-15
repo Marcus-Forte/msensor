@@ -11,13 +11,13 @@ package "msensor::SensorsServer" as Server {
 
     package "Sensor Services" as SSensor {
         class LidarServiceImpl {
-            -lidar : ILidar
+            -bus : SensorBus
         }
         class ImuServiceImpl {
-            -imu : IImu
+            -bus : SensorBus
         }
         class CameraServiceImpl {
-            -camera : ICamera
+            -bus : SensorBus
         }
         class AdcServiceImpl {
             -adc : IAdc
@@ -28,6 +28,14 @@ package "msensor::SensorsServer" as Server {
     SensorsServer *-- ImuServiceImpl
     SensorsServer *-- CameraServiceImpl
     SensorsServer *-- AdcServiceImpl
+}
+
+package "Sensor Bus" as Bus {
+    class SensorBus
+    class "Topic<T>" as Topic
+    class "Subscription<T>" as Subscription
+    SensorBus *-- Topic : lidar, imu, camera
+    Topic o-- "0..*" Subscription : bounded FIFO each
 }
 
 package "Sensor Interfaces" as ISensor {
@@ -54,6 +62,7 @@ package "Sensor Simulators" as SimSensor {
 
 package "Recording" as Rec {
     class ScanRecorder
+    class BusRecorder
     class ScanPlayer
     class RecordingSensorDriver
 }
@@ -67,10 +76,17 @@ package "Configuration" as Cfg {
 ' Proto generates services
 Proto ..> SSensor : generates
 
+' The bus owns the drivers and is their single callback consumer; each gRPC
+' client stream is a subscriber (up to max_clients_per_stream per stream)
+SensorsServer o-- SensorBus
+SensorBus o-- ILidar
+SensorBus o-- IImu
+SensorBus o-- ICamera
+LidarServiceImpl --> Topic : subscribes
+ImuServiceImpl --> Topic : subscribes
+CameraServiceImpl --> Topic : subscribes
+
 ' Services depend on Interfaces (dependency injection)
-LidarServiceImpl o-- ILidar
-ImuServiceImpl o-- IImu
-CameraServiceImpl o-- ICamera
 AdcServiceImpl o-- IAdc
 
 ' Force Drivers below Interfaces
@@ -94,6 +110,8 @@ SimAdc .up.|> IAdc
 RecordingSensorDriver .up.|> ILidar
 RecordingSensorDriver .up.|> IImu
 RecordingSensorDriver o-- ScanPlayer
+BusRecorder o-- SensorBus : subscribes to lidar, imu
+BusRecorder *-- ScanRecorder : writer thread
 ScanRecorder ..> ILidar : records
 ScanRecorder ..> IImu : records
 

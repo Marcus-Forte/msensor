@@ -91,5 +91,8 @@ int main(int argc, char **argv) {
   std::cout << "Saved recording to " << recorder.getFilename() << std::endl;
   std::cout << "Saved entries - LiDAR: " << lidar_entries_saved
             << ", IMU: " << imu_entries_saved << std::endl;
+  std::cout << "Lost entries - LiDAR: "
+            << client.lostScans() << ", IMU: " << client.lostImuSamples()
+            << std::endl;
   return 0;
 }

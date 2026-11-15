@@ -1,19 +1,26 @@
 #include "camera.grpc.pb.h"
+#include "imu.grpc.pb.h"
 #include "lidar.grpc.pb.h"
+#include "msensor/bus/sensor_bus.hh"
 #include "msensor/camera/sim_camera.hh"
 #include "msensor/imu/sim_imu.hh"
 #include "msensor/interface/CallbackSlot.hh"
 #include "msensor/lidar/sim_lidar.hh"
+#include "msensor/recorder/bus_recorder.hh"
+#include "msensor/recorder/scan_player.hh"
+#include "recording.pb.h"
 #include "msensor_server.hh"
 #include "sensors_remote_client.hh"
 #include <atomic>
 #include <condition_variable>
 #include <cstring>
+#include <filesystem>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -76,7 +83,7 @@ TEST_F(TestClientServer, StreamsScansAndImuToClient) {
   EXPECT_GT(scan.header.timestamp, 0u);
 }
 
-TEST_F(TestClientServer, SecondClientIsRejected) {
+TEST_F(TestClientServer, SecondClientIsServedToo) {
   server->start();
   lidar->startSampling();
 
@@ -87,18 +94,131 @@ TEST_F(TestClientServer, SecondClientIsRejected) {
 
   grpc::ClientContext first_context;
   auto first = stub->getLidarScan(&first_context, request);
-  sensors::PointCloud3 msg;
-  ASSERT_TRUE(first->Read(&msg));
-
   grpc::ClientContext second_context;
   auto second = stub->getLidarScan(&second_context, request);
-  sensors::PointCloud3 rejected;
-  EXPECT_FALSE(second->Read(&rejected));
-  EXPECT_EQ(second->Finish().error_code(),
-            grpc::StatusCode::RESOURCE_EXHAUSTED);
+  sensors::PointCloud3 a, b;
+  EXPECT_TRUE(first->Read(&a));
+  EXPECT_TRUE(second->Read(&b));
+  EXPECT_EQ(a.x_size(), 2000);
+  EXPECT_EQ(b.x_size(), 2000);
 
   first_context.TryCancel();
+  second_context.TryCancel();
   first->Finish();
+  second->Finish();
+}
+
+TEST(SensorsServerTest, ClientBeyondTheLimitIsRejectedAndASlotFreesUp) {
+  const std::string address = "127.0.0.1:50078";
+  auto lidar = std::make_shared<msensor::SimLidar>(true);
+  lidar->startSampling();
+  msensor::SensorsServer server(
+      msensor::Sensors{.lidar = lidar},
+      {.listen_address = address, .max_clients_per_stream = 2});
+  server.start();
+  auto stub = sensors::LidarService::NewStub(
+      grpc::CreateChannel(address, grpc::InsecureChannelCredentials()));
+  const sensors::LidarStreamRequest request;
+  sensors::PointCloud3 msg;
+
+  grpc::ClientContext c1, c2, c3;
+  auto s1 = stub->getLidarScan(&c1, request);
+  auto s2 = stub->getLidarScan(&c2, request);
+  ASSERT_TRUE(s1->Read(&msg));
+  ASSERT_TRUE(s2->Read(&msg));
+
+  auto s3 = stub->getLidarScan(&c3, request);
+  EXPECT_FALSE(s3->Read(&msg));
+  EXPECT_EQ(s3->Finish().error_code(), grpc::StatusCode::RESOURCE_EXHAUSTED);
+
+  // When one client leaves, its slot is free again.
+  c1.TryCancel();
+  s1->Finish();
+  bool served = false;
+  for (int attempt = 0; attempt < 50 && !served; ++attempt) {
+    grpc::ClientContext retry;
+    auto s = stub->getLidarScan(&retry, request);
+    served = s->Read(&msg);
+    retry.TryCancel();
+    s->Finish();
+    if (!served) {
+      std::this_thread::sleep_for(50ms);
+    }
+  }
+  EXPECT_TRUE(served);
+
+  c2.TryCancel();
+  s2->Finish();
+  server.stop();
+  lidar->stopSampling();
+}
+
+TEST(SensorsServerTest, ClientLimitIsPerStream) {
+  const std::string address = "127.0.0.1:50079";
+  auto lidar = std::make_shared<msensor::SimLidar>(true);
+  auto imu = std::make_shared<msensor::SimImu>();
+  lidar->startSampling();
+  imu->startSampling();
+  msensor::SensorsServer server(
+      msensor::Sensors{.imu = imu, .lidar = lidar},
+      {.listen_address = address, .max_clients_per_stream = 1});
+  server.start();
+  auto channel =
+      grpc::CreateChannel(address, grpc::InsecureChannelCredentials());
+  auto lidar_stub = sensors::LidarService::NewStub(channel);
+  auto imu_stub = sensors::ImuService::NewStub(channel);
+
+  grpc::ClientContext lc, ic;
+  auto ls = lidar_stub->getLidarScan(&lc, sensors::LidarStreamRequest{});
+  auto is = imu_stub->getImuData(&ic, sensors::ImuStreamRequest{});
+  sensors::PointCloud3 cloud;
+  sensors::IMUData sample;
+  EXPECT_TRUE(ls->Read(&cloud));
+  EXPECT_TRUE(is->Read(&sample)); // a full LiDAR stream does not block the IMU
+  lc.TryCancel();
+  ic.TryCancel();
+  ls->Finish();
+  is->Finish();
+  server.stop();
+  lidar->stopSampling();
+  imu->stopSampling();
+}
+
+// A bus shared with another consumer: the server serves a client while a
+// second, in-process subscriber reads the same samples.
+TEST(SensorsServerTest, SharedBusServesClientsAndOtherSubscribers) {
+  const std::string address = "127.0.0.1:50080";
+  auto imu = std::make_shared<msensor::SimImu>();
+  auto bus = std::make_shared<msensor::SensorBus>(msensor::Sensors{.imu = imu});
+  auto local = bus->imu()->subscribe(1000);
+  msensor::SensorsServer server({.listen_address = address}, bus);
+  server.start();
+  imu->startSampling();
+
+  msensor::SensorsRemoteClient client(address);
+  std::mutex m;
+  std::condition_variable cv;
+  int received = 0;
+  client.setImuCallback([&](const msensor::IMUData &) {
+    std::lock_guard lock(m);
+    ++received;
+    cv.notify_all();
+  });
+  client.start();
+  {
+    std::unique_lock lock(m);
+    EXPECT_TRUE(cv.wait_for(lock, 5s, [&] { return received >= 5; }));
+  }
+  EXPECT_GE(local->size(), 5U);
+  client.stop();
+  server.stop();
+  imu->stopSampling();
+}
+
+TEST(SensorsServerTest, NullSharedBusServesUnavailable) {
+  msensor::SensorsServer server({.listen_address = "127.0.0.1:50081"}, nullptr);
+  server.start();
+  server.stop();
 }
 
 TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
@@ -344,4 +464,216 @@ TEST(SensorsServerTest, CameraJpegQualityShrinksEncodedFrames) {
   EXPECT_GT(low, 0u);
   EXPECT_GT(high, 0u);
   EXPECT_LT(low, high);
+}
+
+namespace {
+
+/// Pushes the sequence numbers one by one and waits for each to reach the
+/// client, so the client's queue never decides what arrives.
+void pushImuSequence(FeedSensor &feed, std::mutex &m,
+                     std::condition_variable &cv,
+                     const std::vector<uint32_t> &delivered,
+                     std::initializer_list<uint32_t> numbers) {
+  size_t expected;
+  {
+    std::lock_guard lock(m);
+    expected = delivered.size();
+  }
+  for (const uint32_t seq : numbers) {
+    msensor::IMUData imu{};
+    imu.header = {1'000'000'000ULL + seq, seq};
+    feed.push(imu);
+    ++expected;
+    std::unique_lock lock(m);
+    ASSERT_TRUE(
+        cv.wait_for(lock, 5s, [&] { return delivered.size() >= expected; }));
+  }
+}
+
+} // namespace
+
+// The client counts gaps in the sequence numbers of each stream and still
+// delivers every sample, in order.
+TEST(SensorsServerTest,
+     ClientCountsSequenceGapsPerStreamAndDeliversEverything) {
+  const std::string address = "127.0.0.1:50082";
+  auto feed = std::make_shared<FeedSensor>();
+  msensor::SensorsServer server({.imu = feed, .lidar = feed},
+                                {.listen_address = address});
+  server.start();
+  msensor::SensorsRemoteClient mutable_client(
+      address, {.scan_queue_size = 64, .imu_queue_size = 64});
+  const msensor::SensorsRemoteClient &client = mutable_client; // const getters
+
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<uint32_t> imus, scans;
+  mutable_client.setImuCallback([&](const msensor::IMUData &imu) {
+    std::lock_guard lock(m);
+    imus.push_back(imu.header.sequence_number);
+    cv.notify_all();
+  });
+  mutable_client.setScanCallback([&](const msensor::Scan3DI &scan) {
+    std::lock_guard lock(m);
+    scans.push_back(scan.header.sequence_number);
+    cv.notify_all();
+  });
+  EXPECT_EQ(client.lostScans(), 0U);
+  EXPECT_EQ(client.lostImuSamples(), 0U);
+  mutable_client.start();
+  for (int i = 0;
+       i < 500 && !(feed->hasImuConsumer() && feed->hasScanConsumer()); ++i) {
+    std::this_thread::sleep_for(10ms);
+  }
+  ASSERT_TRUE(feed->hasImuConsumer());
+  ASSERT_TRUE(feed->hasScanConsumer());
+
+  // First number (100) means nothing; 100 -> 103 loses 2; 103 -> 104 nothing;
+  // 104 -> 0xFFFFFFFE is too big a leap to tell from a restart; then the wrap
+  // 0xFFFFFFFF -> 0 loses nothing and 0 -> 3 loses 2; 3 -> 1 is a restart;
+  // 1 -> 5 loses 3.
+  const std::vector<uint32_t> sent{100, 103, 104, 0xFFFFFFFEU, 0xFFFFFFFFU, 0,
+                                   3,   1,   5};
+  for (size_t i = 0; i < sent.size(); ++i) {
+    msensor::IMUData imu{};
+    imu.header = {1'000'000'000ULL + sent[i], sent[i]};
+    feed->push(imu);
+    std::unique_lock lock(m);
+    ASSERT_TRUE(cv.wait_for(lock, 5s, [&] { return imus.size() > i; }));
+  }
+  for (const uint32_t seq :
+       {7U, 8U, 12U}) { // the scan stream has its own count
+    auto scan = makeScan(seq, 3);
+    feed->push(scan);
+    std::unique_lock lock(m);
+    const size_t want = scans.size() + 1;
+    ASSERT_TRUE(cv.wait_for(lock, 5s, [&] { return scans.size() >= want; }));
+  }
+
+  EXPECT_EQ(client.lostImuSamples(), 2U + 2U + 3U);
+  EXPECT_EQ(client.lostScans(), 3U);
+  {
+    std::lock_guard lock(m);
+    EXPECT_EQ(imus, sent); // counting changed nothing about delivery
+    EXPECT_EQ(scans, (std::vector<uint32_t>{7, 8, 12}));
+  }
+  mutable_client.stop();
+  server.stop();
+}
+
+// A reconnect starts a new stream: its first number is not compared with the
+// last number of the previous connection.
+TEST(SensorsServerTest, ReconnectStartsANewSequenceStream) {
+  const std::string address = "127.0.0.1:50083";
+  msensor::SensorsRemoteClient client(address, {.imu_queue_size = 64});
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<uint32_t> imus;
+  client.setImuCallback([&](const msensor::IMUData &imu) {
+    std::lock_guard lock(m);
+    imus.push_back(imu.header.sequence_number);
+    cv.notify_all();
+  });
+  client.start();
+
+  const auto session = [&](std::initializer_list<uint32_t> numbers) {
+    auto feed = std::make_shared<FeedSensor>();
+    msensor::SensorsServer server({.imu = feed}, {.listen_address = address});
+    server.start();
+    // The client reconnects after a second.
+    for (int i = 0; i < 600 && !feed->hasImuConsumer(); ++i) {
+      std::this_thread::sleep_for(10ms);
+    }
+    ASSERT_TRUE(feed->hasImuConsumer());
+    pushImuSequence(*feed, m, cv, imus, numbers);
+    server.stop();
+  };
+  session({10, 11, 12});
+  EXPECT_EQ(client.lostImuSamples(), 0U);
+  // Without a reset, 12 -> 500 would count 487 samples.
+  session({500, 501, 503});
+  EXPECT_EQ(client.lostImuSamples(), 1U);
+  client.stop();
+  EXPECT_EQ(imus, (std::vector<uint32_t>{10, 11, 12, 500, 501, 503}));
+}
+
+// A recorder on the sensor host and a gRPC client read the same bus at once;
+// the recording is complete and in order whatever the client does.
+TEST(SensorsServerTest, RecordingWhileAClientStreamsFromTheSameBus) {
+  const std::string address = "127.0.0.1:50084";
+  constexpr uint32_t kImu = 600;
+  constexpr uint32_t kScansEvery = 20;
+  auto feed = std::make_shared<FeedSensor>();
+  auto bus = std::make_shared<msensor::SensorBus>(
+      msensor::Sensors{.imu = feed, .lidar = feed});
+  const auto path = std::filesystem::temp_directory_path() /
+                    ("msensor_record_while_streaming_" +
+                     std::to_string(::getpid()) + ".pbscan");
+
+  msensor::BusRecorder recorder(bus);
+  recorder.start(path.string());
+  msensor::SensorsServer server({.listen_address = address}, bus);
+  server.start();
+
+  msensor::SensorsRemoteClient client(
+      address, {.scan_queue_size = 64, .imu_queue_size = 1000});
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<uint32_t> client_imus;
+  client.setImuCallback([&](const msensor::IMUData &imu) {
+    std::lock_guard lock(m);
+    client_imus.push_back(imu.header.sequence_number);
+    cv.notify_all();
+  });
+  client.start();
+
+  for (uint32_t i = 0; i < kImu; ++i) {
+    msensor::IMUData imu{};
+    imu.header = {1'000'000'000ULL + i, i};
+    feed->push(imu);
+    if (i % kScansEvery == 0) {
+      feed->push(makeScan(i / kScansEvery, 50));
+    }
+    std::this_thread::sleep_for(500us);
+  }
+  {
+    std::unique_lock lock(m);
+    ASSERT_TRUE(cv.wait_for(lock, 10s, [&] {
+      return !client_imus.empty() && client_imus.back() == kImu - 1;
+    }));
+  }
+  client.stop();
+  server.stop();
+  const auto stats = recorder.stop();
+
+  EXPECT_EQ(stats.imu.written, kImu);
+  EXPECT_EQ(stats.lidar.written, kImu / kScansEvery);
+  EXPECT_EQ(stats.imu.dropped + stats.lidar.dropped, 0U);
+
+  size_t imus = 0, scans = 0;
+  {
+    msensor::ScanPlayer player(path);
+    while (player.next()) {
+      const auto &entry = player.getLastEntry();
+      if (entry.has_imu()) {
+        ASSERT_EQ(entry.imu().header().sequence_number(), imus);
+        ++imus;
+      } else if (entry.has_scan()) {
+        ASSERT_EQ(entry.scan().header().sequence_number(), scans);
+        ++scans;
+      }
+    }
+  }
+  EXPECT_EQ(imus, kImu);
+  EXPECT_EQ(scans, kImu / kScansEvery);
+  {
+    // The client got an in-order, gap-free tail of the same samples.
+    std::lock_guard lock(m);
+    ASSERT_FALSE(client_imus.empty());
+    for (size_t i = 1; i < client_imus.size(); ++i) {
+      ASSERT_EQ(client_imus[i], client_imus[i - 1] + 1);
+    }
+    EXPECT_EQ(client.lostImuSamples(), 0U);
+  }
+  std::filesystem::remove(path);
 }

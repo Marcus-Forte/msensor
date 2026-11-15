@@ -13,3 +13,11 @@ target_link_libraries(scan_checker msensor::scan_recorder msensor::lidar_imu_con
 
 install(TARGETS scan_checker 
 DESTINATION bin)
+
+# Records a SensorBus on its own thread. A separate target from scan_recorder:
+# it needs the bus (and so OpenCV's headers), which scan_recorder's consumers
+# (e.g. mslam) do not.
+add_library(msensor_bus_recorder bus_recorder.cc)
+add_library(msensor::bus_recorder ALIAS msensor_bus_recorder)
+target_link_libraries(msensor_bus_recorder PUBLIC msensor::bus msensor::IFile
+  PRIVATE msensor::scan_recorder msensor::file)

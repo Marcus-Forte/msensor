@@ -1,10 +1,4 @@
-- separate thread for sensor recording?
-- Support more subscribers at once
 - Optimize camera wire transmission (encoding)
-
-- Sensor Bus
- - Decouple Sensor Getter from Getting sensor data. 
- - Can be done in the gRPC service.
 
 - IMU via gRPC consumes entire CPU.
 - Add sequence number to sensor data for better debugging and synchronization

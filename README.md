@@ -15,7 +15,7 @@ See `src/<sensor_type>/` for examples.
 
 `sensor_publisher` (config-driven, see below) and `sim_publisher` (all four simulated drivers) build their drivers with `msensor::makeSensors()` and serve them through `msensor::SensorsServer`, which is constructed from a `msensor::Sensors` struct and optional `ServerOptions` and exposes the four gRPC services on port **50051**. Both stop cleanly on SIGINT/SIGTERM. `SensorsServer::start()` throws `std::runtime_error` if the address cannot be bound; `wait()` blocks until `stop()`.
 
-`sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/usr/local/etc/publisher_config.json` (the installed template is `config/publisher_config.json`), or you can pass a different file path as the only argument.
+`sensor_publisher` now loads its sensor selection from a JSON file instead of individual CLI flags. By default it reads `/usr/local/etc/publisher_config.json` (the installed template is `config/publisher_config.json`), or you can pass a different file path as the only argument. `--record <file>` (before or after the config path) starts a recording to that file whatever the config says; see [Recorder](#recorder).
 
 The config uses per-sensor objects; every key is optional. `sensor_publisher` builds the sensors with `msensor::makeSensors()` (`msensor/factory/sensor_factory.hh`), which throws on fatal problems (e.g. an enabled Mid360 without an existing config file, or a missing I2C bus) and makes the process print the message and exit with status 1.
 
@@ -37,14 +37,31 @@ The config uses per-sensor objects; every key is optional. `sensor_publisher` bu
 | `camera.encoding` | `"raw"` | `"raw"` or `"jpeg"` (pipeline already delivers JPEG; passed through) |
 | `camera.jpeg_quality` | `85` | 0..100, used when raw frames are JPEG-encoded |
 | `sim.lidar`, `sim.imu`, `sim.camera`, `sim.adc` | `false` | Use the simulated driver instead of the hardware one of the same kind |
+| `recording.enable` | `false` | Record the LiDAR and IMU to a `.pbscan` on the sensor host (see [Recorder](#recorder)) |
+| `recording.file` | `""` | Output file; relative paths are relative to the working directory; empty means `scan_<timestamp>.pbscan` |
+| `recording.scan_queue`, `recording.imu_queue` | `256`, `8192` | Scans / IMU samples held while the disk is behind; positive; not limited by the gRPC caps |
 
 The older `use_sensors.*`, `i2c_bus`, `lidar_device` and `camera_pipeline` keys are still accepted. `config/sim_config.json` enables the four simulators and disables the hardware, for local runs without devices: `sensor_publisher config/sim_config.json`.
+
+### Sensor bus and several clients
+
+Between the drivers and their consumers sits a small in-process publish/subscribe layer, `msensor::SensorBus` (`msensor/bus/`, CMake target `msensor::bus`). A driver keeps its single `setXCallback` consumer; that consumer is the sensor's `Topic<T>`, which wraps each sample in a `shared_ptr<const T>` once and pushes it into the bounded FIFO of every `Subscription<T>`. The driver's thread does nothing else: no protobuf conversion, no I/O, no waiting on a subscriber. A topic is attached to its driver only while it has subscribers, so a driver with no consumer behaves as it did before (the Mid360 discards packets, the simulators and the camera skip their work).
+
+Every gRPC stream (LiDAR, IMU, camera) is a subscriber, so several clients can read the same stream at once, each with its own queue depth and its own drops. `ServerOptions::max_clients_per_stream` (default 8) limits the clients of each stream; one more gets `RESOURCE_EXHAUSTED`. `SensorsServer(Sensors, ServerOptions)` and the legacy positional constructor build a private bus; `SensorsServer(ServerOptions, std::shared_ptr<SensorBus>)` serves a bus that other in-process consumers share:
+
+```cpp
+auto bus = std::make_shared<msensor::SensorBus>(msensor::Sensors{.imu = imu, .lidar = lidar});
+auto scans = bus->lidar()->subscribe(256);      // own FIFO, read with scans->tryPop() / pop(stop_token)
+msensor::SensorsServer server({.listen_address = "0.0.0.0:50051"}, bus);
+```
+
+A bus takes over the driver's callback while it has subscribers, so do not also call `setXCallback` on a driver that is on a bus.
 
 ### C++ Remote Client
 
 `SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same interfaces as local ones.
 
-Each stream request carries `max_queued_samples`, the number of samples the server may hold while the client is behind. When the queue is full the oldest sample is dropped, so the client gets the newest ones in order; a jump in `header.sequence_number` reveals a loss. `0` selects the server default: IMU 200 (cap 4000), LiDAR 1 (cap 64), camera 1 (cap 8); larger values are lowered to the cap. Depth 1 is "latest wins", right for scans and frames; SLAM-style IMU consumers want a deep queue. The client takes the depths as an optional second constructor argument, `SensorsRemoteClient(address, {.scan_queue_size = 1, .imu_queue_size = 1000})`; both default to 0 (server default). `remote_recorder` asks for 16 scans and 1000 IMU samples.
+Each stream request carries `max_queued_samples`, the number of samples the server may hold while the client is behind. When the queue is full the oldest sample is dropped, so the client gets the newest ones in order; a jump in `header.sequence_number` reveals a loss, and `SensorsRemoteClient` counts those jumps itself: `lostScans()` and `lostImuSamples()` return the totals, and a gap is logged as a warning at most once per second per stream. A forward jump of `n > 1` counts `n - 1` lost samples (modulo 2^32, so the wrap from `0xFFFFFFFF` to `0` is no loss); a jump back is a restart (playback rewind, server restart), not a loss; the first number of a stream means nothing, and a reconnect starts a new stream. Counting only observes: every received sample still reaches the callback, in order, on the reader thread. The server logs a drop at most once per second per stream and client, and the total when the stream ends. `0` selects the server default: IMU 200 (cap 4000), LiDAR 1 (cap 64), camera 1 (cap 8); larger values are lowered to the cap. Depth 1 is "latest wins", right for scans and frames; SLAM-style IMU consumers want a deep queue. The client takes the depths as an optional second constructor argument, `SensorsRemoteClient(address, {.scan_queue_size = 1, .imu_queue_size = 1000})`; both default to 0 (server default). `remote_recorder` asks for 16 scans and 1000 IMU samples.
 
 ### Python Client
 
@@ -73,7 +90,17 @@ A `docker-compose.yml` is provided in the `deployment/` folder next to the Docke
 
 ## Recorder
 
-Use `remote_recorder` to store sensory data to a `pbscan` file.
+Two ways to store sensory data to a `pbscan` file.
+
+**On the sensor host** (no network in the path): `sensor_publisher` can record the LiDAR and IMU while it serves them, from the `recording` object of its config (`"recording": {"enable": true, "file": "run.pbscan"}`) or with `--record`:
+
+```
+sensor_publisher /config/publisher_config.json --record run.pbscan
+```
+
+The recorder (`msensor::BusRecorder`, `msensor/recorder/bus_recorder.hh`, CMake target `msensor::bus_recorder`) is one more subscriber of the sensor bus, with its own deep queues (default 256 scans and 8192 IMU samples, set by `recording.scan_queue` / `recording.imu_queue`) and its own writer thread, so a slow disk never slows a driver and gRPC clients are unaffected. Each wake-up writes the queued IMU samples before the queued scans. If a queue overflows, the oldest sample is dropped and counted, and a warning is logged right away (at most once per second per stream). On SIGINT/SIGTERM the publisher stops the server, drains what is queued, closes the file and prints the entries written and dropped per stream. It works with only a LiDAR or only an IMU. A recording of the sim config: `sensor_publisher config/sim_config.json --record /tmp/sim.pbscan`.
+
+**Over the network**: use `remote_recorder <server> [output.pbscan]`. On exit it prints the saved entries and, next to them, the samples lost to sequence number gaps (see the remote client above).
 Via docker use `docker run --rm -v ./:/app mdnf1992/msensor remote_recorder <server>`
 
 Each entry of a `.pbscan` file is a native-endian `uint64` byte count followed by a serialized `sensors::RecordingEntry` (`proto/recording.proto`). `scan_checker -f <file>` counts the entries; `playback_publisher -f <file>` serves them again over gRPC.

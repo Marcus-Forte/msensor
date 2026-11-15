@@ -2,6 +2,7 @@
 
 #include <grpcpp/channel.h>
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -47,6 +48,17 @@ public:
   /// Register the single consumer of IMU samples.
   void setImuCallback(ImuCallback callback) override;
 
+  /// LiDAR scans missing from the stream so far, counted from gaps in
+  /// `header.sequence_number` (a jump back is a restart, not a loss; a
+  /// reconnect starts a new stream). Thread-safe; monotonic.
+  uint64_t lostScans() const noexcept {
+    return lost_scans_.load(std::memory_order_relaxed);
+  }
+  /// IMU samples missing from the stream so far; see lostScans().
+  uint64_t lostImuSamples() const noexcept {
+    return lost_imu_samples_.load(std::memory_order_relaxed);
+  }
+
 private:
   std::string remote_ip_;
   RemoteClientOptions options_;
@@ -56,6 +68,9 @@ private:
 
   msensor::CallbackSlot<msensor::Scan3DI> scan_callback_;
   msensor::CallbackSlot<msensor::IMUData> imu_callback_;
+
+  std::atomic<uint64_t> lost_scans_{0};
+  std::atomic<uint64_t> lost_imu_samples_{0};
 
   // Active stream contexts, so stop() can cancel blocked reads.
   std::mutex ctx_m_;

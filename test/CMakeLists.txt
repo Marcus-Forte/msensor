@@ -15,7 +15,7 @@ gtest_discover_tests(test_recorder)
 
 add_executable(test_client_server src/test_client_server.cc)
 target_include_directories(test_client_server PRIVATE mocks)
-target_link_libraries(test_client_server msensor::server msensor::sim_lidar msensor::sim_imu msensor::sim_camera gtest_main gtest gmock)
+target_link_libraries(test_client_server msensor::server msensor::bus_recorder msensor::scan_recorder msensor::sim_lidar msensor::sim_imu msensor::sim_camera gtest_main gtest gmock)
 gtest_discover_tests(test_client_server)
 
 add_executable(test_conversions src/test_conversions.cc)
@@ -25,6 +25,18 @@ gtest_discover_tests(test_conversions)
 add_executable(test_sensor_stream src/test_sensor_stream.cc)
 target_link_libraries(test_sensor_stream msensor::server gtest_main gtest)
 gtest_discover_tests(test_sensor_stream)
+
+add_executable(test_sensor_bus src/test_sensor_bus.cc)
+target_link_libraries(test_sensor_bus msensor::bus gtest_main gtest)
+gtest_discover_tests(test_sensor_bus)
+
+add_executable(test_bus_recorder src/test_bus_recorder.cc)
+target_link_libraries(test_bus_recorder msensor::bus_recorder msensor::config msensor::scan_recorder msensor::file gtest_main gtest)
+gtest_discover_tests(test_bus_recorder)
+
+add_executable(test_sequence_gap_counter src/test_sequence_gap_counter.cc)
+target_link_libraries(test_sequence_gap_counter msensor::server gtest_main gtest)
+gtest_discover_tests(test_sequence_gap_counter)
 
 add_executable(test_recording_driver src/test_recording_driver.cc)
 target_link_libraries(test_recording_driver msensor::scan_recorder msensor::file gtest_main gtest)

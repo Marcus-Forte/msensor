@@ -63,6 +63,64 @@ TEST_F(ConfigTest, EmptyObjectGivesDefaults) {
   EXPECT_FALSE(c.sim.imu);
   EXPECT_FALSE(c.sim.camera);
   EXPECT_FALSE(c.sim.adc);
+  EXPECT_FALSE(c.recording.enable);
+  EXPECT_TRUE(c.recording.file.empty());
+  EXPECT_EQ(c.recording.scan_queue, 256u);
+  EXPECT_EQ(c.recording.imu_queue, 8192u);
+}
+
+TEST_F(ConfigTest, RecordingKeysPresent) {
+  const Config c = load(R"({
+    "recording": {"enable": true, "file": "/data/run.pbscan",
+                  "scan_queue": 32, "imu_queue": 1000}
+  })");
+  EXPECT_TRUE(c.recording.enable);
+  EXPECT_EQ(c.recording.file, "/data/run.pbscan");
+  EXPECT_EQ(c.recording.scan_queue, 32u);
+  EXPECT_EQ(c.recording.imu_queue, 1000u);
+}
+
+TEST_F(ConfigTest, RecordingKeysAbsentOrPartialKeepDefaults) {
+  // No object, an empty object and a disabled one all leave recording off.
+  EXPECT_FALSE(load(R"({"mid360": {"enable": true}})").recording.enable);
+  const Config empty = load(R"({"recording": {}})");
+  EXPECT_FALSE(empty.recording.enable);
+  EXPECT_EQ(empty.recording.scan_queue, Config{}.recording.scan_queue);
+
+  const Config only_file = load(R"({"recording": {"file": "a.pbscan"}})");
+  EXPECT_FALSE(only_file.recording.enable); // a file alone does not enable it
+  EXPECT_EQ(only_file.recording.file, "a.pbscan");
+  EXPECT_EQ(only_file.recording.scan_queue, 256u);
+  EXPECT_EQ(only_file.recording.imu_queue, 8192u);
+
+  const Config only_imu =
+      load(R"({"recording": {"enable": true, "imu_queue": 50}})");
+  EXPECT_TRUE(only_imu.recording.enable);
+  EXPECT_TRUE(only_imu.recording.file.empty());
+  EXPECT_EQ(only_imu.recording.scan_queue, 256u);
+  EXPECT_EQ(only_imu.recording.imu_queue, 50u);
+
+  // Other sections are unaffected by it.
+  const Config mixed =
+      load(R"({"recording": {"enable": true}, "sim": {"imu": true}})");
+  EXPECT_TRUE(mixed.sim.imu);
+  EXPECT_TRUE(mixed.recording.enable);
+}
+
+TEST_F(ConfigTest, RecordingRejectsBadValues) {
+  EXPECT_THROW(load(R"({"recording": 1})"), std::runtime_error);
+  EXPECT_THROW(load(R"({"recording": {"enable": "yes"}})"), std::runtime_error);
+  EXPECT_THROW(load(R"({"recording": {"file": 3}})"), std::runtime_error);
+  EXPECT_THROW(load(R"({"recording": {"scan_queue": 0}})"), std::runtime_error);
+  EXPECT_THROW(load(R"({"recording": {"imu_queue": -5}})"), std::runtime_error);
+  EXPECT_THROW(load(R"({"recording": {"imu_queue": 1.5}})"),
+               std::runtime_error);
+  try {
+    load(R"({"recording": {"scan_queue": 0}})");
+  } catch (const std::runtime_error &e) {
+    EXPECT_NE(std::string(e.what()).find("recording.scan_queue"),
+              std::string::npos);
+  }
 }
 
 TEST_F(ConfigTest, PerSensorKeys) {
@@ -277,6 +335,15 @@ TEST(ConfigShipped, TemplatesParse) {
        {"config/publisher_config.json", "deployment/config/publisher_config.json",
         "config/sim_config.json"}) {
     EXPECT_NO_THROW(Config::fromFile(root / name)) << name;
+  }
+}
+
+TEST(ConfigShipped, TemplatesHaveRecordingDisabled) {
+  const fs::path root = MSENSOR_SOURCE_DIR;
+  for (const char *name : {"config/publisher_config.json",
+                           "deployment/config/publisher_config.json"}) {
+    const Config c = Config::fromFile(root / name);
+    EXPECT_FALSE(c.recording.enable) << name;
   }
 }
 

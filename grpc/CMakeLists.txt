@@ -14,7 +14,7 @@ sensors_remote_client.cc
 shutdown_signal.cc)
 
 target_link_libraries(msensor_server msensor::sensors_proto msensor::sensors_grpc
-  msensor::IImu msensor::ILidar msensor::ICamera
+  msensor::bus msensor::IImu msensor::ILidar msensor::ICamera
   msensor::lidar_imu_conversions msensor::camera_conversions)
 target_include_directories(msensor_server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

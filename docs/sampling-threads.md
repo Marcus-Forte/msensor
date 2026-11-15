@@ -12,7 +12,8 @@ performing acquisition depends on the driver:
 | `Mid360` | Starts the Livox SDK with `LivoxLidarSdkStart()` and receives data through SDK callbacks; msensor does not create a sampling `std::jthread` for it. |
 | `ADS1115` | Pull-based: `readSingleEnded()` performs a read when called; the driver does not start a background sampling thread. |
 | `RecordingSensorDriver` | Own `std::jthread`, started by `startSampling()`; parses the recording, paces entries by their timestamps and emits them. |
-| `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages and emits them. Queue depths to request come from `RemoteClientOptions`. |
+| `BusRecorder` | One `std::jthread` (the writer), started by `start()`: it sleeps until a topic's wake-up hook (on the topic's dispatcher thread) notifies it, then writes the queued IMU samples and scans through `ScanRecorder`. `stop()` joins it after a last drain. |
+| `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages, counts gaps in their sequence numbers and emits them. Queue depths to request come from `RemoteClientOptions`. |
 
 `RPLidar`, `ICM20948`, `OpenCvCamera`, `SimLidar`, `SimImu` and `SimCamera`
 do not manage their thread themselves: each owns a `msensor::SamplingThread`
@@ -45,15 +46,43 @@ synchronously on their caller.
 The sensor interfaces allow one callback consumer per stream. `CallbackSlot`
 invokes that callback directly on the producer's thread and moves the sample
 into it. Clearing the callback (`setXCallback({})`) waits for an invocation
-that is still running, so the consumer may be destroyed once it returns. The
-gRPC `SensorStreamReactor` registers such a callback and starts asynchronous
-writes; it does not dedicate a blocked thread to each client. If a write is
-already in flight, new samples go into a bounded FIFO whose depth the client
-chooses with `max_queued_samples` in its stream request; when the FIFO is full
-the oldest queued sample is dropped, so slow clients miss samples rather than
-block acquisition. Queued samples are converted to protobuf only when they are
-written, oldest first. Once the client cancels or a write fails, the queue is
-discarded and the reactor starts no further writes.
+that is still running, so the consumer may be destroyed once it returns. That
+one consumer is the sensor's bus topic (`msensor::Topic<T>`, see
+`include/msensor/bus/topic.hh`), which fans the sample out to any number of
+subscribers:
+
+- The driver's thread runs `Topic::publish()`: it wraps the sample in a
+  `shared_ptr<const T>`, pushes it into each subscription's bounded FIFO and
+  signals the topic's dispatcher thread. No protobuf conversion, I/O or wait
+  on a subscriber happens there. The only locks it takes are the topic's
+  subscriber list and each FIFO's, all held for a few instructions.
+- Each topic has one dispatcher thread, started with its first subscriber and
+  joined when the last one leaves, so the thread count follows the number of
+  topics in use, not the number of clients. It calls the subscriptions'
+  wake-up hooks one after the other.
+- The gRPC `SensorStreamReactor` is a subscriber; it does not dedicate a
+  blocked thread to each client. Its hook (dispatcher thread) and
+  `OnWriteDone` (a gRPC thread) take the oldest queued sample, convert it to
+  protobuf and call `StartWrite`, serialised by the reactor's mutex, with at
+  most one write in flight.
+- The topic is the driver's callback only while it has subscribers, so a driver
+  with no client keeps its no-consumer behaviour (below). Attaching and
+  detaching call `setXCallback` on the thread of the first subscribe / last
+  unsubscribe, never while holding the lock `publish()` needs.
+- Destroying a subscription waits for a hook that is running, so after it
+  returns the hook never runs again; a hook therefore must not destroy a
+  subscription of its own topic and should return quickly (a stuck hook delays
+  the others of that topic, but never the driver's thread).
+
+Each client's FIFO is its own: its depth is chosen with `max_queued_samples`
+in the stream request, and when it is full the oldest queued sample is dropped,
+so slow clients miss samples rather than block acquisition or slow another
+client. The samples themselves are shared between the FIFOs. Queued samples are
+converted to protobuf only when they are written, oldest first, so a dropped
+sample is never converted. Once the client cancels or a write fails, its queue
+is discarded and the reactor starts no further writes. Up to
+`ServerOptions::max_clients_per_stream` clients (default 8) are served per
+stream.
 
 | Stream | Default (request 0) | Cap |
 | --- | --- | --- |
@@ -63,8 +92,9 @@ discarded and the reactor starts no further writes.
 
 A larger request is lowered to the cap and logged once at info level. Depth 1 is
 the old latest-wins behaviour, which suits scans and frames; IMU consumers that
-integrate every sample ask for a deeper queue. Drops are counted and logged once
-when the stream ends, not per sample. A client detects a loss as a jump in
+integrate every sample ask for a deeper queue. Drops are counted per client and
+logged as a warning while they happen, at most once per second per stream and
+client, and their total is logged when the stream ends. A client detects a loss as a jump in
 `header.sequence_number` between consecutive messages of one stream. The first
 number received means nothing: some drivers, such as the Mid360 IMU, keep
 counting while no client is connected. The constants live in

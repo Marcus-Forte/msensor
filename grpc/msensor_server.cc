@@ -10,10 +10,17 @@
 namespace msensor {
 
 SensorsServer::SensorsServer(Sensors sensors, ServerOptions options)
-    : lidar_service_(std::move(sensors.lidar)),
-      imu_service_(std::move(sensors.imu)),
-      camera_service_(std::move(sensors.camera), options.camera_jpeg_quality),
-      adc_service_(std::move(sensors.adc)),
+    : SensorsServer(std::move(options),
+                    std::make_shared<SensorBus>(std::move(sensors))) {}
+
+SensorsServer::SensorsServer(ServerOptions options,
+                             std::shared_ptr<SensorBus> bus)
+    : bus_(bus ? std::move(bus) : std::make_shared<SensorBus>(Sensors{})),
+      lidar_service_(bus_, options.max_clients_per_stream),
+      imu_service_(bus_, options.max_clients_per_stream),
+      camera_service_(bus_, options.camera_jpeg_quality,
+                      options.max_clients_per_stream),
+      adc_service_(bus_->sensors().adc),
       listen_address_(std::move(options.listen_address)) {}
 
 // Legacy form: forwards to the constructor above.

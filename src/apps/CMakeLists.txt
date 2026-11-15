@@ -6,7 +6,7 @@ target_link_libraries(sim_publisher msensor::msensor msensor::sensor_factory mse
 
 # Publishers
 add_executable(sensor_publisher sensor_publisher.cc)
-target_link_libraries(sensor_publisher msensor::msensor msensor::sensor_factory msensor::config)
+target_link_libraries(sensor_publisher msensor::msensor msensor::sensor_factory msensor::config msensor::bus_recorder)
 
 add_executable(remote_recorder remote_recorder.cc)
 target_link_libraries(remote_recorder msensor::msensor)
