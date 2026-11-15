@@ -2,8 +2,10 @@
 
 #include <grpcpp/channel.h>
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 
 #include "imu.grpc.pb.h"
@@ -14,6 +16,13 @@
 
 namespace msensor {
 
+/// Per-stream queue depth the client asks the server for (see
+/// `max_queued_samples` in the stream requests). 0 selects the server default.
+struct RemoteClientOptions {
+  uint32_t scan_queue_size = 0; ///< Scans the server may hold for us.
+  uint32_t imu_queue_size = 0;  ///< IMU samples the server may hold for us.
+};
+
 /**
  * @brief This class connects to a SensorService and provides methods to get
  * sensor data remotely.
@@ -21,7 +30,8 @@ namespace msensor {
  */
 class SensorsRemoteClient : public msensor::ILidar, public msensor::IImu {
 public:
-  explicit SensorsRemoteClient(const std::string &remote_ip);
+  explicit SensorsRemoteClient(const std::string &remote_ip,
+                               RemoteClientOptions options = {});
   virtual ~SensorsRemoteClient();
   /// Establish the gRPC channel and prepare internal state.
   void init() override;
@@ -39,6 +49,7 @@ public:
 
 private:
   std::string remote_ip_;
+  RemoteClientOptions options_;
   std::shared_ptr<grpc::Channel> channel_;
   std::unique_ptr<sensors::LidarService::Stub> lidar_stub_;
   std::unique_ptr<sensors::ImuService::Stub> imu_stub_;

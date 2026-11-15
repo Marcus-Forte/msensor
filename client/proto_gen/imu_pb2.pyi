@@ -25,5 +25,7 @@ class IMUData(_message.Message):
     def __init__(self, header: _Optional[_Union[_header_pb2.Header, _Mapping]] = ..., ax: _Optional[float] = ..., ay: _Optional[float] = ..., az: _Optional[float] = ..., gx: _Optional[float] = ..., gy: _Optional[float] = ..., gz: _Optional[float] = ...) -> None: ...
 
 class ImuStreamRequest(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("max_queued_samples",)
+    MAX_QUEUED_SAMPLES_FIELD_NUMBER: _ClassVar[int]
+    max_queued_samples: int
+    def __init__(self, max_queued_samples: _Optional[int] = ...) -> None: ...

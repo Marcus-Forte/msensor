@@ -56,7 +56,10 @@ int main(int argc, char **argv) {
     recorder.start();
   }
 
-  msensor::SensorsRemoteClient client(remote_address);
+  // A recorder wants every sample: ~5 s of IMU at 200 Hz and 16 scans (about
+  // 2.4 MiB of Mid360 scans) of slack for a slow disk.
+  msensor::SensorsRemoteClient client(
+      remote_address, {.scan_queue_size = 16, .imu_queue_size = 1000});
   client.init();
   std::cout << "Connecting to " << remote_address << "..." << std::endl;
 

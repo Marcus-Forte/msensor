@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 import header_pb2 as header__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0blidar.proto\x12\x07sensors\x1a\x0cheader.proto\"\x9f\x01\n\x0bPointCloud3\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\r\n\x01x\x18\x02 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01y\x18\x03 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01z\x18\x04 \x03(\x02\x42\x02\x10\x01\x12\x15\n\tintensity\x18\x05 \x03(\rB\x02\x10\x01\x12\r\n\x01r\x18\x06 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01g\x18\x07 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01\x62\x18\x08 \x03(\x02\x42\x02\x10\x01\"\x14\n\x12LidarStreamRequest2S\n\x0cLidarService\x12\x43\n\x0cgetLidarScan\x12\x1b.sensors.LidarStreamRequest\x1a\x14.sensors.PointCloud30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0blidar.proto\x12\x07sensors\x1a\x0cheader.proto\"\x9f\x01\n\x0bPointCloud3\x12\x1f\n\x06header\x18\x01 \x01(\x0b\x32\x0f.sensors.Header\x12\r\n\x01x\x18\x02 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01y\x18\x03 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01z\x18\x04 \x03(\x02\x42\x02\x10\x01\x12\x15\n\tintensity\x18\x05 \x03(\rB\x02\x10\x01\x12\r\n\x01r\x18\x06 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01g\x18\x07 \x03(\x02\x42\x02\x10\x01\x12\r\n\x01\x62\x18\x08 \x03(\x02\x42\x02\x10\x01\"0\n\x12LidarStreamRequest\x12\x1a\n\x12max_queued_samples\x18\x01 \x01(\r2S\n\x0cLidarService\x12\x43\n\x0cgetLidarScan\x12\x1b.sensors.LidarStreamRequest\x1a\x14.sensors.PointCloud30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -49,7 +49,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_POINTCLOUD3']._serialized_start=39
   _globals['_POINTCLOUD3']._serialized_end=198
   _globals['_LIDARSTREAMREQUEST']._serialized_start=200
-  _globals['_LIDARSTREAMREQUEST']._serialized_end=220
-  _globals['_LIDARSERVICE']._serialized_start=222
-  _globals['_LIDARSERVICE']._serialized_end=305
+  _globals['_LIDARSTREAMREQUEST']._serialized_end=248
+  _globals['_LIDARSERVICE']._serialized_start=250
+  _globals['_LIDARSERVICE']._serialized_end=333
 # @@protoc_insertion_point(module_scope)

@@ -12,7 +12,7 @@ performing acquisition depends on the driver:
 | `Mid360` | Starts the Livox SDK with `LivoxLidarSdkStart()` and receives data through SDK callbacks; msensor does not create a sampling `std::jthread` for it. |
 | `ADS1115` | Pull-based: `readSingleEnded()` performs a read when called; the driver does not start a background sampling thread. |
 | `RecordingSensorDriver` | Own `std::jthread`, started by `startSampling()`; parses the recording, paces entries by their timestamps and emits them. |
-| `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages and emits them. |
+| `SensorsRemoteClient` | Two `std::jthread`s started by `start()`, one per gRPC stream (LiDAR, IMU); each converts received messages and emits them. Queue depths to request come from `RemoteClientOptions`. |
 
 `RPLidar`, `ICM20948`, `OpenCvCamera`, `SimLidar`, `SimImu` and `SimCamera`
 do not manage their thread themselves: each owns a `msensor::SamplingThread`
@@ -48,9 +48,27 @@ into it. Clearing the callback (`setXCallback({})`) waits for an invocation
 that is still running, so the consumer may be destroyed once it returns. The
 gRPC `SensorStreamReactor` registers such a callback and starts asynchronous
 writes; it does not dedicate a blocked thread to each client. If a write is
-already in flight, the reactor retains only the latest pending sample, so slow
-clients can miss samples rather than block acquisition. Once the client
-cancels or a write fails, the reactor starts no further writes.
+already in flight, new samples go into a bounded FIFO whose depth the client
+chooses with `max_queued_samples` in its stream request; when the FIFO is full
+the oldest queued sample is dropped, so slow clients miss samples rather than
+block acquisition. Queued samples are converted to protobuf only when they are
+written, oldest first. Once the client cancels or a write fails, the queue is
+discarded and the reactor starts no further writes.
+
+| Stream | Default (request 0) | Cap |
+| --- | --- | --- |
+| IMU | 200 (about 1 s at 200 Hz) | 4000 |
+| LiDAR | 1 (latest wins) | 64 |
+| Camera | 1 (latest wins) | 8 |
+
+A larger request is lowered to the cap and logged once at info level. Depth 1 is
+the old latest-wins behaviour, which suits scans and frames; IMU consumers that
+integrate every sample ask for a deeper queue. Drops are counted and logged once
+when the stream ends, not per sample. A client detects a loss as a jump in
+`header.sequence_number` between consecutive messages of one stream. The first
+number received means nothing: some drivers, such as the Mid360 IMU, keep
+counting while no client is connected. The constants live in
+`grpc/sensor_stream.hh`.
 
 `Mid360::stopSampling()` uninitialises the Livox SDK, which stops its
 callbacks; sampling again requires `init()` first. Its SDK callback lifecycle

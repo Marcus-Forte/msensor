@@ -17,9 +17,8 @@ CameraServiceImpl::CameraServiceImpl(std::shared_ptr<msensor::ICamera> camera,
 }
 
 grpc::ServerWriteReactor<sensors::CameraStreamReply> *
-CameraServiceImpl::getCameraFrame(
-    grpc::CallbackServerContext * /*context*/,
-    const sensors::CameraStreamRequest * /*request*/) {
+CameraServiceImpl::getCameraFrame(grpc::CallbackServerContext * /*context*/,
+                                  const sensors::CameraStreamRequest *request) {
   return msensor::makeStreamReactor<msensor::CameraFrame,
                                     sensors::CameraStreamReply>(
       camera_, in_use_, "Camera not available",
@@ -28,7 +27,7 @@ CameraServiceImpl::getCameraFrame(
                                 sensors::CameraStreamReply &out) {
         toProtobuf(frame, out, quality);
       },
-      "camera");
+      "camera", request->max_queued_samples(), msensor::kCameraQueueLimits);
 }
 
 } // namespace msensor

@@ -13,6 +13,9 @@ enum CameraEncoding {
 }
 
 message CameraStreamRequest {
+    // Same contract as ImuStreamRequest.max_queued_samples; see the server's
+    // per-stream default and cap in grpc/sensor_stream.hh.
+    uint32 max_queued_samples = 1;
 }
 
 message CameraStreamReply {

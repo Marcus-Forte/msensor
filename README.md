@@ -44,6 +44,8 @@ The older `use_sensors.*`, `i2c_bus`, `lidar_device` and `camera_pipeline` keys 
 
 `SensorsRemoteClient` (in `grpc/`) connects to a running server and implements `ILidar` + `IImu`, so downstream code can consume remote sensors through the same interfaces as local ones.
 
+Each stream request carries `max_queued_samples`, the number of samples the server may hold while the client is behind. When the queue is full the oldest sample is dropped, so the client gets the newest ones in order; a jump in `header.sequence_number` reveals a loss. `0` selects the server default: IMU 200 (cap 4000), LiDAR 1 (cap 64), camera 1 (cap 8); larger values are lowered to the cap. Depth 1 is "latest wins", right for scans and frames; SLAM-style IMU consumers want a deep queue. The client takes the depths as an optional second constructor argument, `SensorsRemoteClient(address, {.scan_queue_size = 1, .imu_queue_size = 1000})`; both default to 0 (server default). `remote_recorder` asks for 16 scans and 1000 IMU samples.
+
 ### Python Client
 
 A Python client is provided in `client/`. It connects to the gRPC services and renders data with [viser](https://viser.studio).

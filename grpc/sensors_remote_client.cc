@@ -12,8 +12,9 @@ namespace msensor {
 
 constexpr int g_connectionRecoverDelayMs = 1000;
 
-SensorsRemoteClient::SensorsRemoteClient(const std::string &remote_ip)
-    : remote_ip_(remote_ip) {
+SensorsRemoteClient::SensorsRemoteClient(const std::string &remote_ip,
+                                         RemoteClientOptions options)
+    : remote_ip_(remote_ip), options_(options) {
 
   channel_ = grpc::CreateChannel(remote_ip, grpc::InsecureChannelCredentials());
   lidar_stub_ = sensors::LidarService::NewStub(channel_);
@@ -93,7 +94,8 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
 
 void SensorsRemoteClient::start() {
   read_thread_ = std::jthread([this](std::stop_token st) {
-    const sensors::LidarStreamRequest request;
+    sensors::LidarStreamRequest request;
+    request.set_max_queued_samples(options_.scan_queue_size);
     readLoop<sensors::PointCloud3>(
         st, ctx_m_, lidar_ctx_, "lidar",
         [&](grpc::ClientContext *ctx) {
@@ -105,7 +107,8 @@ void SensorsRemoteClient::start() {
   });
 
   imu_reader_thread_ = std::jthread([this](std::stop_token st) {
-    const sensors::ImuStreamRequest request;
+    sensors::ImuStreamRequest request;
+    request.set_max_queued_samples(options_.imu_queue_size);
     readLoop<sensors::IMUData>(
         st, ctx_m_, imu_ctx_, "imu",
         [&](grpc::ClientContext *ctx) {

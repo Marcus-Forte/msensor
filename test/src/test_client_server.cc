@@ -102,7 +102,8 @@ TEST_F(TestClientServer, SecondClientIsRejected) {
 }
 
 TEST_F(TestClientServer, MissingSensorsReportUnavailableWithoutCrashing) {
-  auto empty_server = std::make_shared<msensor::SensorsServer>(msensor::Sensors{});
+  auto empty_server =
+      std::make_shared<msensor::SensorsServer>(msensor::Sensors{});
   empty_server->start();
   msensor::SensorsRemoteClient c("localhost:50051");
   c.start(); // streams end with UNAVAILABLE, client retries quietly
@@ -126,7 +127,9 @@ public:
     imus_.setCallback(std::move(callback));
   }
   bool hasScanConsumer() const { return scans_.hasCallback(); }
+  bool hasImuConsumer() const { return imus_.hasCallback(); }
   void push(msensor::Scan3DI scan) { scans_.emit(std::move(scan)); }
+  void push(msensor::IMUData imu) { imus_.emit(std::move(imu)); }
 
 private:
   msensor::CallbackSlot<msensor::Scan3DI> scans_;
@@ -188,6 +191,62 @@ TEST(ClientServerContent, ScansArriveBitExact) {
   }
   client.stop();
   server.stop();
+}
+
+namespace {
+
+/// Emits a back-to-back burst of `burst` IMU samples numbered 0..burst-1 once
+/// the client's stream is attached, while the client asks for `queue_size`.
+/// Returns the sequence numbers received (bounded wait for the last one).
+std::vector<uint32_t> imuBurst(const std::string &address, uint32_t queue_size,
+                               uint32_t burst) {
+  auto feed = std::make_shared<FeedSensor>();
+  msensor::SensorsServer server({.imu = feed}, {.listen_address = address});
+  server.start();
+  msensor::SensorsRemoteClient client(address, {.imu_queue_size = queue_size});
+
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<uint32_t> seqs;
+  client.setImuCallback([&](const msensor::IMUData &imu) {
+    std::lock_guard lock(m);
+    seqs.push_back(imu.header.sequence_number);
+    cv.notify_all();
+  });
+  client.start();
+  for (int i = 0; i < 500 && !feed->hasImuConsumer(); ++i) {
+    std::this_thread::sleep_for(10ms); // polling for the stream to attach
+  }
+  EXPECT_TRUE(feed->hasImuConsumer());
+
+  for (uint32_t i = 0; i < burst; ++i) {
+    msensor::IMUData imu{};
+    imu.header = {1'000'000'000ULL + i, i};
+    feed->push(imu);
+  }
+  {
+    // The newest sample is always delivered, so wait for it.
+    std::unique_lock lock(m);
+    EXPECT_TRUE(cv.wait_for(
+        lock, 10s, [&] { return !seqs.empty() && seqs.back() == burst - 1; }));
+  }
+  client.stop();
+  server.stop();
+  std::lock_guard lock(m);
+  return seqs;
+}
+
+} // namespace
+
+// The request's max_queued_samples reaches the reactor: a burst far faster
+// than the wire is received whole and in order when the queue is deep enough.
+TEST(ClientServerContent, ImuBurstArrivesCompleteWithADeepQueue) {
+  constexpr uint32_t kBurst = 400;
+  const auto seqs = imuBurst("127.0.0.1:50077", kBurst, kBurst);
+  ASSERT_EQ(seqs.size(), kBurst);
+  for (uint32_t i = 0; i < kBurst; ++i) {
+    ASSERT_EQ(seqs[i], i);
+  }
 }
 
 TEST(SensorsServerTest, WaitBlocksUntilStop) {
@@ -254,9 +313,9 @@ namespace {
 size_t firstFrameBytes(const std::string &address, int quality) {
   auto camera = std::make_shared<msensor::SimCamera>();
   camera->startSampling();
-  msensor::SensorsServer server({.camera = camera},
-                                {.listen_address = address,
-                                 .camera_jpeg_quality = quality});
+  msensor::SensorsServer server(
+      {.camera = camera},
+      {.listen_address = address, .camera_jpeg_quality = quality});
   server.start();
 
   auto stub = sensors::CameraService::NewStub(

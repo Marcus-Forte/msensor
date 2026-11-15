@@ -21,8 +21,10 @@ GRAY8: CameraEncoding
 MJPEG: CameraEncoding
 
 class CameraStreamRequest(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("max_queued_samples",)
+    MAX_QUEUED_SAMPLES_FIELD_NUMBER: _ClassVar[int]
+    max_queued_samples: int
+    def __init__(self, max_queued_samples: _Optional[int] = ...) -> None: ...
 
 class CameraStreamReply(_message.Message):
     __slots__ = ("header", "width", "height", "encoding", "image_data")

@@ -15,6 +15,21 @@ message IMUData {
 }
 
 message ImuStreamRequest {
+    // How many samples the server may hold for this client while it is
+    // behind (a write is in flight). 0 selects the server default for this
+    // stream; a value above the server cap is lowered to the cap. When the
+    // queue is full the OLDEST queued sample is dropped, so the client always
+    // gets the newest ones, in order. With 1 only the newest pending sample is
+    // kept.
+    //
+    // Loss detection: Header carries only `timestamp` and `sequence_number`.
+    // Drivers number the samples they produce consecutively, so a jump in
+    // `sequence_number` between two received messages of one stream (modulo
+    // 2^32) means samples were dropped. The first number received carries no
+    // meaning: some drivers keep counting while no client is connected (the
+    // Mid360 IMU does), others do not. The server does not report the drop
+    // count on the wire.
+    uint32 max_queued_samples = 1;
 }
 
 service ImuService {

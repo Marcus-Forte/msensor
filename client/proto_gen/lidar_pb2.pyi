@@ -28,5 +28,7 @@ class PointCloud3(_message.Message):
     def __init__(self, header: _Optional[_Union[_header_pb2.Header, _Mapping]] = ..., x: _Optional[_Iterable[float]] = ..., y: _Optional[_Iterable[float]] = ..., z: _Optional[_Iterable[float]] = ..., intensity: _Optional[_Iterable[int]] = ..., r: _Optional[_Iterable[float]] = ..., g: _Optional[_Iterable[float]] = ..., b: _Optional[_Iterable[float]] = ...) -> None: ...
 
 class LidarStreamRequest(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("max_queued_samples",)
+    MAX_QUEUED_SAMPLES_FIELD_NUMBER: _ClassVar[int]
+    max_queued_samples: int
+    def __init__(self, max_queued_samples: _Optional[int] = ...) -> None: ...

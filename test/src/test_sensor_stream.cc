@@ -1,4 +1,4 @@
-// Unit tests of SensorStreamReactor's latest-wins write logic, driven
+// Unit tests of SensorStreamReactor's bounded-FIFO write logic, driven
 // deterministically through a fake reactor base instead of a gRPC server.
 
 #include "msensor/interface/CallbackSlot.hh"
@@ -115,7 +115,7 @@ struct Harness {
   std::atomic<int> conversions{0};
   Reactor *reactor = nullptr;
 
-  Harness() {
+  explicit Harness(size_t capacity = 1) {
     g_wire = &wire;
     reactor = new Reactor(
         driver.install(),
@@ -123,7 +123,7 @@ struct Harness {
           conversions.fetch_add(1);
           out.seq = sample.seq;
         },
-        in_use, "test");
+        in_use, "test", capacity);
     g_wire = nullptr;
   }
 
@@ -149,7 +149,7 @@ TEST(SensorStreamReactor, InstallsCallbackAndWritesFirstSample) {
 }
 
 TEST(SensorStreamReactor, KeepsOnlyTheLatestSampleWhileWriting) {
-  Harness h;
+  Harness h(1);
   h.driver.emit(1);
   h.driver.emit(2);
   h.driver.emit(3);
@@ -168,6 +168,87 @@ TEST(SensorStreamReactor, KeepsOnlyTheLatestSampleWhileWriting) {
   h.reactor->OnCancel();
   h.reactor->OnDone();
   EXPECT_EQ(h.wire.violations, 0);
+}
+
+TEST(SensorStreamReactor, ZeroCapacityBehavesAsOne) {
+  Harness h(0);
+  h.driver.emit(1);
+  h.driver.emit(2);
+  h.driver.emit(3);
+  h.writeDone(true);
+  EXPECT_EQ(h.wire.writes(), (std::vector<int>{1, 3}));
+  h.reactor->OnCancel();
+  h.writeDone(true);
+  h.reactor->OnDone();
+}
+
+TEST(SensorStreamReactor, QueuePreservesFifoOrder) {
+  Harness h(8);
+  for (int seq = 1; seq <= 5; ++seq) {
+    h.driver.emit(seq);
+  }
+  EXPECT_EQ(h.conversions.load(), 1); // queued samples are not converted yet
+  for (int i = 0; i < 4; ++i) {
+    h.writeDone(true);
+  }
+  EXPECT_EQ(h.wire.writes(), (std::vector<int>{1, 2, 3, 4, 5}));
+  EXPECT_EQ(h.conversions.load(), 5);
+  h.writeDone(true); // empty queue: no further write
+  EXPECT_EQ(h.wire.writes().size(), 5U);
+  h.reactor->OnCancel();
+  h.reactor->OnDone();
+  EXPECT_EQ(h.wire.violations, 0);
+}
+
+TEST(SensorStreamReactor, OverflowDropsTheOldestAndKeepsTheNewestInOrder) {
+  Harness h(3);
+  h.driver.emit(1); // written at once
+  for (int seq = 2; seq <= 9; ++seq) {
+    h.driver.emit(seq); // queue holds the newest 3: 7, 8, 9
+  }
+  for (int i = 0; i < 4; ++i) {
+    h.writeDone(true);
+  }
+  EXPECT_EQ(h.wire.writes(), (std::vector<int>{1, 7, 8, 9}));
+  EXPECT_EQ(h.conversions.load(), 4); // dropped samples were never converted
+  h.reactor->OnCancel();
+  h.reactor->OnDone();
+  EXPECT_EQ(h.wire.violations, 0);
+}
+
+TEST(SensorStreamReactor, CancelWithQueuedSamplesWritesNothingMore) {
+  Harness h(4);
+  h.driver.emit(1);
+  h.driver.emit(2);
+  h.driver.emit(3); // queued
+  h.reactor->OnCancel();
+  EXPECT_EQ(h.wire.finishes, 1);
+  h.writeDone(true); // late success: queue was discarded
+  h.driver.emit(4);
+  EXPECT_EQ(h.wire.writes(), std::vector<int>{1});
+  EXPECT_EQ(h.conversions.load(), 1);
+  EXPECT_EQ(h.wire.violations, 0);
+  h.reactor->OnDone();
+  EXPECT_EQ(h.wire.destroyed, 1);
+}
+
+TEST(ResolveQueueSize, ZeroGivesTheDefaultInRangeIsKeptAboveCapGivesTheCap) {
+  constexpr msensor::QueueLimits limits{200, 4000};
+  EXPECT_EQ(msensor::resolveQueueSize(0, limits), 200U);
+  EXPECT_EQ(msensor::resolveQueueSize(1, limits), 1U);
+  EXPECT_EQ(msensor::resolveQueueSize(777, limits), 777U);
+  EXPECT_EQ(msensor::resolveQueueSize(4000, limits), 4000U);
+  EXPECT_EQ(msensor::resolveQueueSize(4001, limits), 4000U);
+  EXPECT_EQ(msensor::resolveQueueSize(UINT32_MAX, limits), 4000U);
+}
+
+TEST(ResolveQueueSize, StreamConstants) {
+  EXPECT_EQ(msensor::resolveQueueSize(0, msensor::kImuQueueLimits), 200U);
+  EXPECT_EQ(msensor::resolveQueueSize(9999, msensor::kImuQueueLimits), 4000U);
+  EXPECT_EQ(msensor::resolveQueueSize(0, msensor::kLidarQueueLimits), 1U);
+  EXPECT_EQ(msensor::resolveQueueSize(100, msensor::kLidarQueueLimits), 64U);
+  EXPECT_EQ(msensor::resolveQueueSize(0, msensor::kCameraQueueLimits), 1U);
+  EXPECT_EQ(msensor::resolveQueueSize(100, msensor::kCameraQueueLimits), 8U);
 }
 
 // gRPC may deliver a successful OnWriteDone after OnCancel; a pending sample
