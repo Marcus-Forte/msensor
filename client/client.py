@@ -4,6 +4,7 @@ import threading
 import time
 from typing import Optional
 from colormap import int2rgb
+from connection import ConnectionMonitor, ConnectionState, led_html
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +261,6 @@ def stream_adc(
     stub: adc_pb2_grpc.AdcServiceStub,
     stop_event: threading.Event,
     channel: int,
-    battery_level_handle: viser.GuiNumberHandle,
 ):
     request = adc_pb2.AdcDataRequest(channel=channel)
     period_sec = DEFAULT_ADC_PERIOD_SEC
@@ -268,8 +268,7 @@ def stream_adc(
     while not stop_event.is_set():
         try:
             resp = stub.getAdcData(request)
-            logger.debug(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
-            battery_level_handle.value = resp.sample
+            logger.info(f"ADC{channel}: {resp.sample:.4f} V @ {resp.timestamp}")
         except grpc.RpcError as exc:
             logger.info(f"ADC error: {exc.code().name} - {exc.details()}")
         stop_event.wait(period_sec)
@@ -281,7 +280,7 @@ def parse_args():
     parser.add_argument("--imu", action="store_true", help="Subscribe to the IMU stream")
     parser.add_argument("--lidar", action="store_true", help="Subscribe to the LiDAR stream")
     parser.add_argument("--camera", action="store_true", help="Subscribe to the camera stream")
-    parser.add_argument("--adc", action="store_true", help="Poll the ADC")
+    parser.add_argument("--adc", action="store_true", help="Poll the ADC and log its readings (not shown in the viewer)")
     parser.add_argument(
         "--adc-channel",
         type=int,
@@ -305,7 +304,7 @@ def main():
     )
 
     if not any([args.imu, args.lidar, args.camera, args.adc]):
-        args.imu = args.lidar = args.camera = args.adc = True
+        args.imu = args.lidar = args.camera = True
 
     server = viser.ViserServer(port=8081)
     server.scene.world_axes.visible = True
@@ -317,7 +316,11 @@ def main():
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
 
-    battery_level_handle = server.gui.add_number("Battery Voltage (V)", initial_value=0.0, step=0.1, disabled=True)
+    connection_led = server.gui.add_html(led_html(ConnectionState.CONNECTING, args.server))
+    connection_monitor = ConnectionMonitor(
+        args.server, lambda state: setattr(connection_led, "content", led_html(state, args.server))
+    )
+    connection_monitor.start(stop_event.is_set, stop_event.wait)
 
     logger.info(f"Connecting to sensor server at {args.server}")
     with grpc.insecure_channel(args.server) as channel:
@@ -366,7 +369,7 @@ def main():
             logger.info(f"Starting ADC polling on channel {args.adc_channel}")
             t = threading.Thread(
                 target=stream_adc,
-                args=(adc_stub, stop_event, args.adc_channel, battery_level_handle),
+                args=(adc_stub, stop_event, args.adc_channel),
                 name="adc-thread",
             )
             t.start()
@@ -382,6 +385,8 @@ def main():
 
     for t in threads:
         t.join()
+    stop_event.set()
+    connection_monitor.close()
 
 
 if __name__ == "__main__":

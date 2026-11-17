@@ -1,4 +1,0 @@
-- Optimize camera wire transmission (encoding)
-
-- IMU via gRPC consumes entire CPU.
-- Add sequence number to sensor data for better debugging and synchronization

@@ -9,7 +9,7 @@ dependencies = [
     "grpcio-tools==1.78.0",
     "opencv-python>=4.12.0.88",
     "ruff>=0.15.5",
-    "viser>=1.0.16",
+    "viser>=1.1.1",
 ]
 
 [tool.ruff]

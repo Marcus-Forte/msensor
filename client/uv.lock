@@ -150,7 +150,7 @@ requires-dist = [
     { name = "grpcio-tools", specifier = "==1.78.0" },
     { name = "opencv-python", specifier = ">=4.12.0.88" },
     { name = "ruff", specifier = ">=0.15.5" },
-    { name = "viser", specifier = ">=1.0.16" },
+    { name = "viser", specifier = ">=1.1.1" },
 ]
 
 [[package]]
