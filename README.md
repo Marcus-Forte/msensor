@@ -100,8 +100,8 @@ sensor_publisher /config/publisher_config.json --record run.pbscan
 
 The recorder (`msensor::BusRecorder`, `msensor/recorder/bus_recorder.hh`, CMake target `msensor::bus_recorder`) is one more subscriber of the sensor bus, with its own deep queues (default 256 scans and 8192 IMU samples, set by `recording.scan_queue` / `recording.imu_queue`) and its own writer thread, so a slow disk never slows a driver and gRPC clients are unaffected. Each wake-up writes the queued IMU samples before the queued scans. If a queue overflows, the oldest sample is dropped and counted, and a warning is logged right away (at most once per second per stream). On SIGINT/SIGTERM the publisher stops the server, drains what is queued, closes the file and prints the entries written and dropped per stream. It works with only a LiDAR or only an IMU. A recording of the sim config: `sensor_publisher config/sim_config.json --record /tmp/sim.pbscan`.
 
-**Over the network**: use `remote_recorder <server> [output.pbscan]`. On exit it prints the saved entries and, next to them, the samples lost to sequence number gaps (see the remote client above).
-Via docker use `docker run --rm -v ./:/app mdnf1992/msensor remote_recorder <server>`
+**Over the network**: use `remote_recorder -a <server> [-o output.pbscan]` (`--address`, `--output`; `-h` lists the options). On exit it prints the saved entries and, next to them, the samples lost to sequence number gaps (see the remote client above).
+Via docker use `docker run --rm -v ./:/app mdnf1992/msensor remote_recorder -a <server>`
 
 Each entry of a `.pbscan` file is a native-endian `uint64` byte count followed by a serialized `sensors::RecordingEntry` (`proto/recording.proto`). `scan_checker -f <file>` counts the entries; `playback_publisher -f <file>` serves them again over gRPC.
 

@@ -7,7 +7,7 @@ print_usage() {
 Available apps (run as CMD/args):
   sensor_publisher [config.json]
   sim_publisher
-  remote_recorder <host:port> [output.pbscan]
+  remote_recorder -a <host:port> [-o output.pbscan]
   playback_publisher -f <file> [-s <speed>] [-p <port>] [--autoplay]
   scan_checker -f <file>
 
