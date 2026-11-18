@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <google/protobuf/empty.pb.h>
@@ -7,8 +8,8 @@
 
 #include "msensor/conversions/lidar_imu_conversions.hh"
 #include "msensor/log/log.hh"
-#include "sequence_gap_counter.hh"
 #include "sensors_remote_client.hh"
+#include "sequence_gap_counter.hh"
 
 namespace msensor {
 
@@ -37,7 +38,18 @@ void SensorsRemoteClient::setImuCallback(ImuCallback callback) {
 
 SensorsRemoteClient::~SensorsRemoteClient() { stop(); }
 
+bool SensorsRemoteClient::linkUp() const {
+  // try_to_connect = false: only observe; the reader threads drive connecting.
+  return channel_->GetState(false) == GRPC_CHANNEL_READY;
+}
+
 namespace {
+
+int64_t steadyNowNs() noexcept {
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
 
 void interruptibleSleep(std::stop_token st, std::chrono::milliseconds d) {
   std::mutex m;
@@ -135,6 +147,17 @@ void readLoop(std::stop_token st, std::mutex &m, grpc::ClientContext *&active,
 
 } // namespace
 
+std::optional<std::chrono::milliseconds>
+SensorsRemoteClient::ageSince(const std::atomic<int64_t> &stamp_ns) noexcept {
+  const int64_t stamp = stamp_ns.load(std::memory_order_relaxed);
+  if (stamp == kNever) {
+    return std::nullopt;
+  }
+  const int64_t age_ns = std::max<int64_t>(0, steadyNowNs() - stamp);
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::nanoseconds(age_ns));
+}
+
 void SensorsRemoteClient::start() {
   read_thread_ = std::jthread([this](std::stop_token st) {
     sensors::LidarStreamRequest request;
@@ -147,6 +170,7 @@ void SensorsRemoteClient::start() {
         },
         [&] { loss.reconnected(); },
         [&](const sensors::PointCloud3 &msg) {
+          last_scan_ns_.store(steadyNowNs(), std::memory_order_relaxed);
           Scan3DI scan = fromProtobuf(msg);
           loss.observe(scan.header.sequence_number);
           scan_callback_.emit(std::move(scan));
@@ -164,6 +188,7 @@ void SensorsRemoteClient::start() {
         },
         [&] { loss.reconnected(); },
         [&](const sensors::IMUData &msg) {
+          last_imu_ns_.store(steadyNowNs(), std::memory_order_relaxed);
           IMUData sample = fromProtobuf(msg);
           loss.observe(sample.header.sequence_number);
           imu_callback_.emit(std::move(sample));

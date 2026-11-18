@@ -3,9 +3,12 @@
 #include <grpcpp/channel.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -59,7 +62,31 @@ public:
     return lost_imu_samples_.load(std::memory_order_relaxed);
   }
 
+  /// Address of the sensor server this client connects to.
+  const std::string &address() const noexcept { return remote_ip_; }
+
+  /// True while the gRPC channel to the server is connected (READY). It is
+  /// false before start(), while the server is unreachable and during the
+  /// retries in between. It says nothing about samples: a connected server
+  /// that sends nothing (a paused playback) is still up. Thread-safe.
+  bool linkUp() const;
+
+  /// Time since the last LiDAR scan / IMU sample arrived, or nullopt when none
+  /// has arrived yet. Not reset by a reconnect. Thread-safe.
+  std::optional<std::chrono::milliseconds> lastScanAge() const noexcept {
+    return ageSince(last_scan_ns_);
+  }
+  std::optional<std::chrono::milliseconds> lastImuAge() const noexcept {
+    return ageSince(last_imu_ns_);
+  }
+
 private:
+  /// steady_clock stamp (ns) of the latest sample of a stream; kNever before
+  /// the first.
+  static constexpr int64_t kNever = std::numeric_limits<int64_t>::min();
+  static std::optional<std::chrono::milliseconds>
+  ageSince(const std::atomic<int64_t> &stamp_ns) noexcept;
+
   std::string remote_ip_;
   RemoteClientOptions options_;
   std::shared_ptr<grpc::Channel> channel_;
@@ -71,6 +98,8 @@ private:
 
   std::atomic<uint64_t> lost_scans_{0};
   std::atomic<uint64_t> lost_imu_samples_{0};
+  std::atomic<int64_t> last_scan_ns_{kNever};
+  std::atomic<int64_t> last_imu_ns_{kNever};
 
   // Active stream contexts, so stop() can cancel blocked reads.
   std::mutex ctx_m_;

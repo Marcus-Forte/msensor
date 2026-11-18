@@ -8,8 +8,8 @@
 #include "msensor/lidar/sim_lidar.hh"
 #include "msensor/recorder/bus_recorder.hh"
 #include "msensor/recorder/scan_player.hh"
-#include "recording.pb.h"
 #include "msensor_server.hh"
+#include "recording.pb.h"
 #include "sensors_remote_client.hh"
 #include <atomic>
 #include <condition_variable>
@@ -595,6 +595,74 @@ TEST(SensorsServerTest, ReconnectStartsANewSequenceStream) {
   EXPECT_EQ(client.lostImuSamples(), 1U);
   client.stop();
   EXPECT_EQ(imus, (std::vector<uint32_t>{10, 11, 12, 500, 501, 503}));
+}
+
+// linkUp() tells a connected but silent server (a paused playback) from a dead
+// one, and the sample ages tell silence from a stream that delivers.
+TEST(SensorsServerTest, ClientReportsLinkAndSampleAges) {
+  const std::string address = "127.0.0.1:50085";
+  const auto wait_for = [](auto &&condition, std::chrono::milliseconds limit) {
+    for (auto waited = 0ms; waited < limit; waited += 10ms) {
+      if (condition()) {
+        return true;
+      }
+      std::this_thread::sleep_for(10ms);
+    }
+    return condition();
+  };
+
+  msensor::SensorsRemoteClient client(address, {.imu_queue_size = 64});
+  EXPECT_EQ(client.address(), address);
+  EXPECT_FALSE(client.linkUp());
+  EXPECT_FALSE(client.lastScanAge().has_value());
+  EXPECT_FALSE(client.lastImuAge().has_value());
+
+  std::atomic<int> scans{0};
+  std::atomic<int> imus{0};
+  client.setScanCallback([&](const msensor::Scan3DI &) { ++scans; });
+  client.setImuCallback([&](const msensor::IMUData &) { ++imus; });
+  client.start();
+  // No server yet: still down, no samples.
+  std::this_thread::sleep_for(200ms);
+  EXPECT_FALSE(client.linkUp());
+
+  auto feed = std::make_shared<FeedSensor>();
+  {
+    msensor::SensorsServer server({.imu = feed, .lidar = feed},
+                                  {.listen_address = address});
+    server.start();
+
+    // Connected, but the server sends nothing: link up, no ages.
+    ASSERT_TRUE(wait_for([&] { return client.linkUp(); }, 6000ms));
+    EXPECT_FALSE(client.lastScanAge().has_value());
+    EXPECT_FALSE(client.lastImuAge().has_value());
+
+    ASSERT_TRUE(wait_for(
+        [&] { return feed->hasScanConsumer() && feed->hasImuConsumer(); },
+        6000ms));
+    feed->push(makeScan(0, 4));
+    msensor::IMUData imu{};
+    imu.header = {1'000'000'000ULL, 0};
+    feed->push(imu);
+    ASSERT_TRUE(wait_for([&] { return scans == 1 && imus == 1; }, 5000ms));
+
+    ASSERT_TRUE(client.lastScanAge().has_value());
+    ASSERT_TRUE(client.lastImuAge().has_value());
+    EXPECT_LT(*client.lastScanAge(), 2000ms);
+    EXPECT_LT(*client.lastImuAge(), 2000ms);
+
+    // The ages grow while the server is silent.
+    std::this_thread::sleep_for(300ms);
+    EXPECT_GE(*client.lastScanAge(), 250ms);
+    EXPECT_GE(*client.lastImuAge(), 250ms);
+    EXPECT_TRUE(client.linkUp());
+    server.stop();
+  }
+
+  // The server is gone: the link goes down; the last sample times stay.
+  EXPECT_TRUE(wait_for([&] { return !client.linkUp(); }, 6000ms));
+  EXPECT_TRUE(client.lastScanAge().has_value());
+  client.stop();
 }
 
 // A recorder on the sensor host and a gRPC client read the same bus at once;
